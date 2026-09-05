@@ -6,6 +6,7 @@ from app.departments.router import department_router
 from app.employees.router import employee_router
 from app.contracts.router import contract_router
 from app.schedules.router import schedule_router
+from app.attendance.router import attendance_router
 app = FastAPI(
     title="PeoplePay360 HR & Payroll API",
     description="Integrated HR and Payroll Operations Platform",
@@ -18,6 +19,7 @@ app.include_router(department_router)
 app.include_router(employee_router)
 app.include_router(contract_router)
 app.include_router(schedule_router)
+app.include_router(attendance_router)
 
 @app.get("/")
 def root():

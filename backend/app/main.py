@@ -4,7 +4,7 @@ from sqlalchemy import text
 from app.database.connection import engine
 from app.auth.router import role_router, auth_router
 from app.departments.router import department_router
-
+from app.employees.router import employee_router
 app = FastAPI(
     title="PeoplePay360 HR & Payroll API",
     description="Integrated HR and Payroll Operations Platform",
@@ -14,7 +14,7 @@ app = FastAPI(
 app.include_router(role_router)
 app.include_router(auth_router)
 app.include_router(department_router)
-
+app.include_router(employee_router)
 @app.get("/")
 def root():
     return {

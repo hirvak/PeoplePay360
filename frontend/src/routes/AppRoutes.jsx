@@ -8,16 +8,20 @@ import RegisterPage from "../pages/Auth/RegisterPage";
 
 // Page Components
 import DashboardPage from "../pages/Dashboard/DashboardPage";
+
+// Employees Submenu Pages
 import EmployeesPage from "../pages/Employees/EmployeesPage";
 import EmployeeDetailPage from "../pages/Employees/EmployeeDetailPage";
 import EmployeeContractsPage from "../pages/Employees/EmployeeContractsPage";
 import DepartmentsPage from "../pages/Departments/DepartmentsPage";
 import WorkingSchedulesPage from "../pages/WorkingSchedules/WorkingSchedulesPage";
 
+// Top-Level Navbar Pages
 import ContractsPage from "../pages/Contracts/ContractsPage";
 import AttendancePage from "../pages/Attendance/AttendancePage";
 import AttendanceDetails from "../pages/Attendance/AttendanceDetails";
 
+// Time Off Submenu Pages
 import TimeOffDashboardPage from "../pages/TimeOff/TimeOffDashboardPage";
 import TimeOffRequestsPage from "../pages/TimeOff/TimeOffRequestsPage";
 import CreateTimeOffRequest from "../pages/TimeOff/CreateTimeOffRequest";
@@ -29,11 +33,19 @@ import TimeOffTypeDetails from "../pages/TimeOff/TimeOffTypeDetails";
 import TimeOffAllocationsPage from "../pages/TimeOff/TimeOffAllocationsPage";
 import AllocationDetails from "../pages/TimeOff/AllocationDetails";
 
+// Payroll Submenu Pages
 import PayrollDashboardPage from "../pages/Payroll/PayrollDashboardPage";
 import PayRunsPage from "../pages/Payroll/PayRunsPage";
+import PayrunProcessingPage from "../pages/Payroll/PayrunProcessingPage";
+
 import PayslipsPage from "../pages/Payslips/PayslipsPage";
+import PayslipDetailPage from "../pages/Payslips/PayslipDetailPage";
+
 import SalaryStructuresPage from "../pages/SalaryStructures/SalaryStructuresPage";
+import SalaryStructureDetailPage from "../pages/SalaryStructures/SalaryStructureDetailPage";
+
 import SalaryRulesPage from "../pages/SalaryRules/SalaryRulesPage";
+import SalaryRuleDetailPage from "../pages/SalaryRules/SalaryRuleDetailPage";
 
 function AppRoutes() {
   return (
@@ -52,7 +64,7 @@ function AppRoutes() {
           {/* 1. Dashboard */}
           <Route path="/dashboard" element={<DashboardPage />} />
 
-          {/* 2. Employees & Submenu Routes */}
+          {/* 2. Employees Submenu Routes */}
           <Route path="/employees" element={<EmployeesPage />} />
           <Route path="/employees/:id" element={<EmployeeDetailPage />} />
           <Route path="/employees/contracts" element={<EmployeeContractsPage />} />
@@ -85,9 +97,18 @@ function AppRoutes() {
           {/* 6. Payroll Submenu Routes */}
           <Route path="/payroll" element={<PayrollDashboardPage />} />
           <Route path="/payroll/payruns" element={<PayRunsPage />} />
+          <Route path="/payroll/payruns/:id" element={<PayrunProcessingPage />} />
+
           <Route path="/payslips" element={<PayslipsPage />} />
+          <Route path="/payslips/:id" element={<PayslipDetailPage />} />
+          <Route path="/payroll/payslips" element={<PayslipsPage />} />
+          <Route path="/payroll/payslips/:id" element={<PayslipDetailPage />} />
+
           <Route path="/payroll/structures" element={<SalaryStructuresPage />} />
+          <Route path="/payroll/structures/:id" element={<SalaryStructureDetailPage />} />
+
           <Route path="/payroll/rules" element={<SalaryRulesPage />} />
+          <Route path="/payroll/rules/:id" element={<SalaryRuleDetailPage />} />
 
           {/* Wildcard 404 Route */}
           <Route

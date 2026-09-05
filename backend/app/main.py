@@ -28,6 +28,8 @@ from app.salary.rule_model import SalaryRule
 from app.payroll.payrun_model import Payrun
 from app.payroll.payslip_model import Payslip
 from app.payroll.payslip_line_model import PayslipLine
+from app.dashboard.router import dashboard_router
+
 app = FastAPI(
     title="PeoplePay360 HR & Payroll API",
     description="Integrated HR and Payroll Operations Platform",
@@ -46,7 +48,7 @@ app.include_router(salary_structure_router)
 app.include_router(salary_rule_router)
 app.include_router(payrun_router)
 app.include_router(payslip_router)
-
+app.include_router(dashboard_router)
 @app.get("/")
 def root():
     return {

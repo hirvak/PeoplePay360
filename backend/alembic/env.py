@@ -7,6 +7,7 @@ from alembic import context
 from app.database.base import Base
 from app.auth.model import Role
 from app.auth.model import Role
+from app.departments.model import Department
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

@@ -42,6 +42,11 @@ class Employee(Base):
         nullable=True
     )
 
+    schedule_id: Mapped[int | None] = mapped_column(
+        ForeignKey("schedules.id"),
+        nullable=True
+    )
+
     manager_id: Mapped[int | None] = mapped_column(
         ForeignKey("employees.id"),
         nullable=True
@@ -81,7 +86,7 @@ class Employee(Base):
     user = relationship("User")
 
     department = relationship("Department")
-
+    schedule = relationship("Schedule")
     manager = relationship(
         "Employee",
         remote_side=[id]

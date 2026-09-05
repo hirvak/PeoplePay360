@@ -36,6 +36,11 @@ class Contract(Base):
         nullable=True
     )
 
+    schedule_id: Mapped[int | None] = mapped_column(
+        ForeignKey("schedules.id"),
+        nullable=True
+    )
+
     job_position: Mapped[str] = mapped_column(
         String(100),
         nullable=False
@@ -74,3 +79,5 @@ class Contract(Base):
     employee = relationship("Employee")
 
     department = relationship("Department")
+
+    schedule = relationship("Schedule")

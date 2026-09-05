@@ -10,6 +10,7 @@ from app.auth.model import Role
 from app.departments.model import Department
 from app.employees.model import Employee
 from app.contracts.model import Contract
+from app.schedules.model import Schedule, ScheduleDay
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

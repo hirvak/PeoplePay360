@@ -1,7 +1,11 @@
 from sqlalchemy.orm import Session, joinedload
+
 from app.auth.model import User
 from app.employees.model import Employee
 from app.employees.schema import EmployeeCreate, EmployeeUpdate
+from app.schedules.model import Schedule
+
+
 def create_employee(
     db: Session,
     employee_data: EmployeeCreate
@@ -32,6 +36,16 @@ def create_employee(
         if not manager:
             raise ValueError("Manager not found")
 
+    # Check schedule if provided
+    if employee_data.schedule_id is not None:
+        schedule = db.query(Schedule).filter(
+            Schedule.id == employee_data.schedule_id,
+            Schedule.is_active.is_(True)
+        ).first()
+
+        if not schedule:
+            raise ValueError("Active schedule not found")
+
     # Create employee
     employee = Employee(
         user_id=employee_data.user_id,
@@ -39,6 +53,7 @@ def create_employee(
         first_name=employee_data.first_name,
         last_name=employee_data.last_name,
         department_id=employee_data.department_id,
+        schedule_id=employee_data.schedule_id,
         manager_id=employee_data.manager_id,
         job_position=employee_data.job_position,
         employment_status=employee_data.employment_status,
@@ -54,7 +69,10 @@ def create_employee(
 def get_employees(db: Session):
     employees = (
         db.query(Employee)
-        .options(joinedload(Employee.user))
+        .options(
+            joinedload(Employee.user).joinedload(User.role),
+            joinedload(Employee.schedule)
+        )
         .order_by(Employee.id)
         .all()
     )
@@ -80,7 +98,10 @@ def get_employee(
 ):
     employee = (
         db.query(Employee)
-        .options(joinedload(Employee.user).joinedload(User.role))
+        .options(
+            joinedload(Employee.user).joinedload(User.role),
+            joinedload(Employee.schedule)
+        )
         .filter(Employee.id == employee_id)
         .first()
     )
@@ -100,6 +121,7 @@ def get_employee(
         employee.user_role = None
 
     return employee
+
 
 def update_employee(
     db: Session,
@@ -126,6 +148,19 @@ def update_employee(
 
             if not manager:
                 raise ValueError("Manager not found")
+
+    # Validate schedule if being changed
+    if "schedule_id" in update_data:
+        schedule_id = update_data["schedule_id"]
+
+        if schedule_id is not None:
+            schedule = db.query(Schedule).filter(
+                Schedule.id == schedule_id,
+                Schedule.is_active.is_(True)
+            ).first()
+
+            if not schedule:
+                raise ValueError("Active schedule not found")
 
     # Apply updates
     for field, value in update_data.items():

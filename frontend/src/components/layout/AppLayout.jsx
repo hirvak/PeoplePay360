@@ -65,7 +65,7 @@ export default function AppLayout() {
     pathname === "/departments" ||
     pathname === "/schedule";
 
-  const isContractsActive = pathname === "/contracts";
+  const isContractsActive = pathname.startsWith("/contracts");
 
   const isAttendanceActive = pathname === "/attendance";
 
@@ -235,7 +235,7 @@ export default function AppLayout() {
                           : "text-slate-700 hover:bg-purple-50 hover:text-purple-700"
                       }`}
                     >
-                      <span>Time Offs</span>
+                      <span>Time Off</span>
                       {pathname === "/time-off/requests" && <Check className="h-3.5 w-3.5 text-purple-600" />}
                     </button>
 
@@ -463,7 +463,7 @@ export default function AppLayout() {
                 Dashboard
               </NavLink>
               <NavLink to="/time-off/requests" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-1.5 text-sm text-slate-700 hover:bg-purple-50 hover:text-purple-700 rounded-md">
-                Time Offs
+                Time Off
               </NavLink>
               <NavLink to="/time-off/types" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-1.5 text-sm text-slate-700 hover:bg-purple-50 hover:text-purple-700 rounded-md">
                 Time Off Types

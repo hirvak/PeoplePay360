@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +21,7 @@ import { Alert } from "@/components/ui/alert";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
+import { formatApiError } from "@/lib/utils";
 
 // Zod Login Validation Schema
 const loginSchema = z.object({
@@ -41,8 +42,14 @@ export default function LoginPage() {
   // Success message after registration
   const registrationSuccessMessage = location.state?.message;
 
-  // If already authenticated, redirect to dashboard
+  // If already authenticated, redirect to dashboard or requested page
   const from = location.state?.from?.pathname || "/dashboard";
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
 
   const {
     register,
@@ -57,11 +64,6 @@ export default function LoginPage() {
     },
   });
 
-  // Redirect if logged in
-  if (isAuthenticated) {
-    navigate(from, { replace: true });
-  }
-
   const onSubmit = async (data) => {
     setAuthError("");
     try {
@@ -74,11 +76,7 @@ export default function LoginPage() {
       navigate(from, { replace: true });
     } catch (err) {
       console.error("Login failed:", err);
-      const errorMsg =
-        err?.response?.data?.detail ||
-        err?.message ||
-        "Authentication failed. Please check your credentials or network connection.";
-      setAuthError(errorMsg);
+      setAuthError(formatApiError(err, "Authentication failed. Please check your credentials."));
     }
   };
 

@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
+import { formatApiError } from "@/lib/utils";
 
 // Zod Registration Validation Schema
 const registerSchema = z
@@ -81,11 +82,7 @@ export default function RegisterPage() {
       });
     } catch (err) {
       console.error("Registration failed:", err);
-      const errorMsg =
-        err?.response?.data?.detail ||
-        err?.message ||
-        "Registration failed. Please check your details or network connection.";
-      setRegError(errorMsg);
+      setRegError(formatApiError(err, "Registration failed. Please check your details."));
     }
   };
 

@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://127.0.0.1:8000";
+import api from "./api";
 
 const TOKEN_KEY = "peoplepay360_token";
 const USER_KEY = "peoplepay360_user";
@@ -26,80 +26,32 @@ const getCachedUser = () => {
 
 
 const login = async (credentials) => {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(credentials),
-  });
+  const response = await api.post("/auth/login", credentials);
+  const data = response.data;
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-
-    throw new Error(
-      error.detail || "Login failed"
-    );
+  if (data.access_token) {
+    localStorage.setItem(TOKEN_KEY, data.access_token);
   }
-
-  const data = await response.json();
-
-  localStorage.setItem(
-    TOKEN_KEY,
-    data.access_token
-  );
 
   return data;
 };
 
 
 const getMe = async () => {
-  const token = getToken();
+  const response = await api.get("/auth/me");
+  const user = response.data;
 
-  if (!token) {
-    throw new Error("No authentication token found");
+  if (user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
   }
-
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Authentication token is invalid");
-  }
-
-  const user = await response.json();
-
-  localStorage.setItem(
-    USER_KEY,
-    JSON.stringify(user)
-  );
 
   return user;
 };
 
 
 const register = async (userData) => {
-  const response = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(userData),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-
-    throw new Error(
-      error.detail || "Registration failed"
-    );
-  }
-
-  return await response.json();
+  const response = await api.post("/auth/register", userData);
+  return response.data;
 };
 
 

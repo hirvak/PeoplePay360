@@ -20,8 +20,14 @@ import AttendanceDetails from "../pages/Attendance/AttendanceDetails";
 
 import TimeOffDashboardPage from "../pages/TimeOff/TimeOffDashboardPage";
 import TimeOffRequestsPage from "../pages/TimeOff/TimeOffRequestsPage";
+import CreateTimeOffRequest from "../pages/TimeOff/CreateTimeOffRequest";
+import TimeOffRequestDetails from "../pages/TimeOff/TimeOffRequestDetails";
 import TimeOffTypesPage from "../pages/TimeOff/TimeOffTypesPage";
+import CreateTimeOffType from "../pages/TimeOff/CreateTimeOffType";
+import EditTimeOffType from "../pages/TimeOff/EditTimeOffType";
+import TimeOffTypeDetails from "../pages/TimeOff/TimeOffTypeDetails";
 import TimeOffAllocationsPage from "../pages/TimeOff/TimeOffAllocationsPage";
+import AllocationDetails from "../pages/TimeOff/AllocationDetails";
 
 import PayrollDashboardPage from "../pages/Payroll/PayrollDashboardPage";
 import PayRunsPage from "../pages/Payroll/PayRunsPage";
@@ -65,8 +71,16 @@ function AppRoutes() {
           {/* 5. Time Off Submenu Routes */}
           <Route path="/time-off" element={<TimeOffDashboardPage />} />
           <Route path="/time-off/requests" element={<TimeOffRequestsPage />} />
+          <Route path="/time-off/requests/new" element={<CreateTimeOffRequest />} />
+          <Route path="/time-off/requests/:id" element={<TimeOffRequestDetails />} />
+          <Route path="/time-off/new" element={<CreateTimeOffRequest />} />
+          <Route path="/time-off/:id" element={<TimeOffRequestDetails />} />
           <Route path="/time-off/types" element={<TimeOffTypesPage />} />
+          <Route path="/time-off/types/new" element={<CreateTimeOffType />} />
+          <Route path="/time-off/types/:typeId" element={<TimeOffTypeDetails />} />
+          <Route path="/time-off/types/:typeId/edit" element={<EditTimeOffType />} />
           <Route path="/time-off/allocations" element={<TimeOffAllocationsPage />} />
+          <Route path="/time-off/allocations/:id" element={<AllocationDetails />} />
 
           {/* 6. Payroll Submenu Routes */}
           <Route path="/payroll" element={<PayrollDashboardPage />} />

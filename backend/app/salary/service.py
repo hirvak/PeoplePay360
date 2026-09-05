@@ -265,6 +265,16 @@ def update_salary_rule(
         exclude_unset=True
     )
 
+    # Allow a salary rule to be deactivated even if
+    # its existing configuration is incomplete.
+    if update_data.get("is_active") is False:
+        salary_rule.is_active = False
+
+        db.commit()
+        db.refresh(salary_rule)
+
+        return salary_rule
+
     new_rule_type = update_data.get(
         "rule_type",
         salary_rule.rule_type
@@ -338,7 +348,6 @@ def update_salary_rule(
     db.refresh(salary_rule)
 
     return salary_rule
-
 
 def delete_salary_rule(
     db: Session,

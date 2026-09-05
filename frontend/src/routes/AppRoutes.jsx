@@ -9,6 +9,7 @@ import RegisterPage from "../pages/Auth/RegisterPage";
 // Page Components
 import DashboardPage from "../pages/Dashboard/DashboardPage";
 import EmployeesPage from "../pages/Employees/EmployeesPage";
+import EmployeeDetailPage from "../pages/Employees/EmployeeDetailPage";
 import EmployeeContractsPage from "../pages/Employees/EmployeeContractsPage";
 import DepartmentsPage from "../pages/Departments/DepartmentsPage";
 import WorkingSchedulesPage from "../pages/WorkingSchedules/WorkingSchedulesPage";
@@ -47,11 +48,14 @@ function AppRoutes() {
 
           {/* 2. Employees & Submenu Routes */}
           <Route path="/employees" element={<EmployeesPage />} />
+          <Route path="/employees/:id" element={<EmployeeDetailPage />} />
           <Route path="/employees/contracts" element={<EmployeeContractsPage />} />
+          <Route path="/employees/departments" element={<DepartmentsPage />} />
           <Route path="/departments" element={<DepartmentsPage />} />
+          <Route path="/employees/working-schedules" element={<WorkingSchedulesPage />} />
           <Route path="/schedule" element={<WorkingSchedulesPage />} />
 
-          {/* 3. Contracts */}
+          {/* 3. Contracts (Top-level navbar item) */}
           <Route path="/contracts" element={<ContractsPage />} />
 
           {/* 4. Attendance */}

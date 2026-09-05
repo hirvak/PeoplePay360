@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -16,14 +16,24 @@ import {
 } from "lucide-react";
 import EmployeeModal from "../../components/employees/EmployeeModal";
 
-export default function EmployeeDetailPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-
-  // Local fallback employee state
-  const [employee, setEmployee] = useState({
-    id: id || "1",
-    employee_code: `EMP-00${id || 1}`,
+const MOCK_PROFILES = {
+  "1": {
+    id: "1",
+    employee_code: "EMP-001",
+    first_name: "John",
+    last_name: "Smith",
+    user_email: "john.smith@peoplepay360.com",
+    user_role: "Developer",
+    department_name: "Engineering",
+    schedule_name: "Standard 40 Hours/Week",
+    manager_name: "Sarah Johnson",
+    job_position: "Senior Software Developer",
+    employment_status: "Full-Time",
+    is_active: true,
+  },
+  "2": {
+    id: "2",
+    employee_code: "EMP-002",
     first_name: "Sarah",
     last_name: "Johnson",
     user_email: "sarah.johnson@peoplepay360.com",
@@ -34,9 +44,49 @@ export default function EmployeeDetailPage() {
     job_position: "HR Manager",
     employment_status: "Full-Time",
     is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+  },
+  "3": {
+    id: "3",
+    employee_code: "EMP-003",
+    first_name: "Michael",
+    last_name: "Brown",
+    user_email: "michael.brown@peoplepay360.com",
+    user_role: "Finance Lead",
+    department_name: "Finance & Payroll",
+    schedule_name: "Standard 40 Hours/Week",
+    manager_name: "Sarah Johnson",
+    job_position: "Finance Manager",
+    employment_status: "Full-Time",
+    is_active: true,
+  },
+};
+
+export default function EmployeeDetailPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [employee, setEmployee] = useState(() => {
+    return MOCK_PROFILES[id] || {
+      id: id || "1",
+      employee_code: `EMP-00${id || 1}`,
+      first_name: "John",
+      last_name: "Smith",
+      user_email: "john.smith@peoplepay360.com",
+      user_role: "Developer",
+      department_name: "Engineering",
+      schedule_name: "Standard 40 Hours/Week",
+      manager_name: "Sarah Johnson",
+      job_position: "Senior Software Developer",
+      employment_status: "Full-Time",
+      is_active: true,
+    };
   });
+
+  useEffect(() => {
+    if (MOCK_PROFILES[id]) {
+      setEmployee(MOCK_PROFILES[id]);
+    }
+  }, [id]);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -83,7 +133,7 @@ export default function EmployeeDetailPage() {
           className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition shadow-xs cursor-pointer"
         >
           <Edit3 className="h-4 w-4 text-slate-500" />
-          <span>Edit Employee</span>
+          <span>Edit Profile</span>
         </button>
       </div>
 
@@ -123,14 +173,14 @@ export default function EmployeeDetailPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 border-t lg:border-t-0 border-slate-200 pt-4 lg:pt-0">
             {/* 1. Contracts */}
             <Link
-              to="/contracts"
+              to="/employees/contracts"
               className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-white p-3 text-center hover:border-purple-300 hover:bg-purple-50/50 transition group shadow-2xs"
             >
               <div className="flex items-center gap-1.5 text-slate-700 group-hover:text-purple-700 font-bold text-sm">
                 <FileText className="h-4 w-4 text-purple-600" />
-                <span>Contracts (1)</span>
+                <span>Contracts</span>
               </div>
-              <span className="text-[11px] text-slate-500 font-medium">Contracts</span>
+              <span className="text-[11px] text-slate-500 font-medium">Employee Contracts</span>
             </Link>
 
             {/* 2. Attendance */}
@@ -278,24 +328,6 @@ export default function EmployeeDetailPage() {
                   )}
                 </span>
               </div>
-
-              {employee.created_at && (
-                <div>
-                  <span className="block text-xs font-semibold text-slate-400 uppercase">Created Date</span>
-                  <span className="text-sm font-medium text-slate-700 mt-1 block">
-                    {new Date(employee.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-              )}
-
-              {employee.updated_at && (
-                <div>
-                  <span className="block text-xs font-semibold text-slate-400 uppercase">Last Updated</span>
-                  <span className="text-sm font-medium text-slate-700 mt-1 block">
-                    {new Date(employee.updated_at).toLocaleDateString()}
-                  </span>
-                </div>
-              )}
             </div>
           </div>
 

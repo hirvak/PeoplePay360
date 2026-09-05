@@ -145,27 +145,27 @@ export default function AppLayout() {
                     </button>
 
                     <button
-                      onClick={() => navigate("/departments")}
+                      onClick={() => navigate("/employees/departments")}
                       className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between transition ${
-                        pathname === "/departments"
+                        pathname === "/employees/departments" || pathname === "/departments"
                           ? "bg-purple-50 text-purple-700 font-medium"
                           : "text-slate-700 hover:bg-purple-50 hover:text-purple-700"
                       }`}
                     >
                       <span>Departments</span>
-                      {pathname === "/departments" && <Check className="h-3.5 w-3.5 text-purple-600" />}
+                      {(pathname === "/employees/departments" || pathname === "/departments") && <Check className="h-3.5 w-3.5 text-purple-600" />}
                     </button>
 
                     <button
-                      onClick={() => navigate("/schedule")}
+                      onClick={() => navigate("/employees/working-schedules")}
                       className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between transition ${
-                        pathname === "/schedule"
+                        pathname === "/employees/working-schedules" || pathname === "/schedule"
                           ? "bg-purple-50 text-purple-700 font-medium"
                           : "text-slate-700 hover:bg-purple-50 hover:text-purple-700"
                       }`}
                     >
-                      <span>Working Schedule</span>
-                      {pathname === "/schedule" && <Check className="h-3.5 w-3.5 text-purple-600" />}
+                      <span>Working Schedules</span>
+                      {(pathname === "/employees/working-schedules" || pathname === "/schedule") && <Check className="h-3.5 w-3.5 text-purple-600" />}
                     </button>
                   </div>
                 )}

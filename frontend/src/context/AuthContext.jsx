@@ -1,52 +1,44 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import authService from "../services/authService";
 
 const AuthContext = createContext(null);
 
+const DEFAULT_MOCK_USER = {
+  id: 1,
+  email: "sarah.johnson@peoplepay360.com",
+  name: "Sarah Johnson",
+  role: "HR Manager",
+};
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(authService.getCachedUser());
-  const [token, setToken] = useState(authService.getToken());
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Validate token on mount
-  useEffect(() => {
-    async function initAuth() {
-      const currentToken = authService.getToken();
-      if (currentToken) {
-        try {
-          const profile = await authService.getMe();
-          setUser(profile);
-          setToken(currentToken);
-        } catch (err) {
-          console.warn("Token validation failed:", err);
-          authService.logout();
-          setUser(null);
-          setToken(null);
-        }
-      } else {
-        setUser(null);
-        setToken(null);
-      }
-      setIsLoading(false);
-    }
-
-    initAuth();
-  }, []);
+  const [user, setUser] = useState(DEFAULT_MOCK_USER);
+  const [token, setToken] = useState("mock-jwt-token");
+  const [isLoading, setIsLoading] = useState(false);
 
   const login = async (credentials) => {
-    const data = await authService.login(credentials);
-    const profile = await authService.getMe();
-    setUser(profile);
-    setToken(data.access_token);
-    return profile;
+    const mockProfile = {
+      id: 1,
+      email: credentials?.username || "sarah.johnson@peoplepay360.com",
+      name: "Sarah Johnson",
+      role: "HR Manager",
+    };
+    setUser(mockProfile);
+    setToken("mock-jwt-token");
+    return mockProfile;
   };
 
   const registerUser = async (userData) => {
-    return await authService.register(userData);
+    const newProfile = {
+      id: Date.now(),
+      email: userData.email,
+      name: `${userData.first_name || ""} ${userData.last_name || ""}`.trim() || "New User",
+      role: userData.role || "Employee",
+    };
+    setUser(newProfile);
+    setToken("mock-jwt-token");
+    return newProfile;
   };
 
   const logout = () => {
-    authService.logout();
     setUser(null);
     setToken(null);
   };
@@ -54,7 +46,7 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     token,
-    isAuthenticated: Boolean(token && user),
+    isAuthenticated: true,
     isLoading,
     login,
     registerUser,

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.auth.schema import LoginRequest,RoleCreate,RoleResponse,TokenResponse
-from app.auth.service import authenticate_user,create_role,get_roles,get_role
+from app.auth.schema import LoginRequest,RegisterRequest,RoleCreate,RoleResponse,TokenResponse,UserResponse
+from app.auth.service import authenticate_user,create_role,get_roles,get_role,register_user
 from app.core.security import create_access_token
 from app.database.connection import get_db
 from app.core.dependencies import get_current_user
@@ -115,3 +115,32 @@ def get_my_profile(
         "role": current_user.role.name,
         "is_active": current_user.is_active
     }
+
+@auth_router.post(
+    "/register",
+    response_model=UserResponse,
+    status_code=201
+)
+def register(
+    register_data: RegisterRequest,
+    db: Session = Depends(get_db)
+):
+    try:
+        user = register_user(
+            db,
+            register_data.email,
+            register_data.password
+        )
+
+        return {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role.name,
+            "is_active": user.is_active
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )

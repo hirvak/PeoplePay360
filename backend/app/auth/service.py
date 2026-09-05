@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.core.security import verify_password, create_access_token
 from app.auth.model import Role,User
 from app.auth.schema import RoleCreate
-
+from app.core.security import hash_password
 
 def create_role(db: Session, role_data: RoleCreate):
     existing_role = (
@@ -83,3 +83,39 @@ def login_user(
     })
 
     return token
+
+def register_user(
+    db: Session,
+    email: str,
+    password: str
+):
+    existing_user = (
+        db.query(User)
+        .filter(User.email == email)
+        .first()
+    )
+
+    if existing_user:
+        raise ValueError("Email already registered")
+
+    employee_role = (
+        db.query(Role)
+        .filter(Role.name == "Employee")
+        .first()
+    )
+
+    if not employee_role:
+        raise ValueError("Employee role not found")
+
+    user = User(
+        email=email,
+        password_hash=hash_password(password),
+        role_id=employee_role.id,
+        is_active=True
+    )
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return user

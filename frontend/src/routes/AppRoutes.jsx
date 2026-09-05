@@ -1,5 +1,10 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
+import ProtectedRoute from "./ProtectedRoute";
+
+// Auth Pages
+import LoginPage from "../pages/Auth/LoginPage";
+import RegisterPage from "../pages/Auth/RegisterPage";
 
 // Page Components
 import DashboardPage from "../pages/Dashboard/DashboardPage";

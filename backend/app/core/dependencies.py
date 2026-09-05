@@ -6,10 +6,15 @@ from sqlalchemy.orm import Session
 from app.auth.model import User
 from app.core.config import settings
 from app.database.connection import get_db
+from app.employees.model import Employee
 
 
 security = HTTPBearer()
 
+
+# ============================================================
+# GET CURRENT LOGGED-IN USER
+# ============================================================
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -59,13 +64,52 @@ def get_current_user(
     return user
 
 
+# ============================================================
+# ROLE CHECK
+# ============================================================
+
 def require_role(*required_roles: str):
-    def role_checker(current_user: User = Depends(get_current_user)):
+    def role_checker(
+        current_user: User = Depends(get_current_user)
+    ):
         if current_user.role.name not in required_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions"
             )
+
         return current_user
 
     return role_checker
+
+
+# ============================================================
+# GET CURRENT EMPLOYEE
+#
+# Finds the Employee record linked to the logged-in User.
+#
+# This will be reused for:
+# - My Profile
+# - My Attendance
+# - My Leave
+# - My Contract
+# - My Payslips
+# ============================================================
+
+def get_current_employee(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    employee = (
+        db.query(Employee)
+        .filter(Employee.user_id == current_user.id)
+        .first()
+    )
+
+    if not employee:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Employee profile not linked to this user"
+        )
+
+    return employee

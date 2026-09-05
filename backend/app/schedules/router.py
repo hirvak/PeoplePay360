@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import require_role
+from app.core.dependencies import (
+    require_role,
+    get_current_employee,
+)
 from app.database.connection import get_db
 
 from app.schedules.schema import (
@@ -25,6 +28,35 @@ schedule_router = APIRouter(
 )
 
 
+# ============================================================
+# GET MY WORKING SCHEDULE
+# Employee can see ONLY their assigned schedule
+# ============================================================
+
+@schedule_router.get(
+    "/me",
+    response_model=ScheduleResponse
+)
+def get_my_schedule(
+    current_employee=Depends(get_current_employee),
+):
+    if not current_employee.schedule:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "No working schedule assigned "
+                "to this employee"
+            )
+        )
+
+    return current_employee.schedule
+
+
+# ============================================================
+# GET ALL SCHEDULES
+# HR Manager / HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @schedule_router.get(
     "/",
     response_model=list[ScheduleResponse]
@@ -42,6 +74,11 @@ def get_all_schedules(
 ):
     return get_schedules(db)
 
+
+# ============================================================
+# GET SINGLE SCHEDULE
+# HR Manager / HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
 
 @schedule_router.get(
     "/{schedule_id}",
@@ -73,6 +110,11 @@ def get_single_schedule(
     return schedule
 
 
+# ============================================================
+# CREATE SCHEDULE
+# HR Manager / HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @schedule_router.post(
     "/",
     response_model=ScheduleResponse,
@@ -82,7 +124,12 @@ def create_new_schedule(
     schedule_data: ScheduleCreate,
     db: Session = Depends(get_db),
     current_user=Depends(
-        require_role("HR Manager", "Admin")
+        require_role(
+            "HR Manager",
+            "HR Payroll User",
+            "HR Payroll Manager",
+            "Admin"
+        )
     )
 ):
     try:
@@ -98,6 +145,11 @@ def create_new_schedule(
         )
 
 
+# ============================================================
+# UPDATE SCHEDULE
+# HR Manager / HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @schedule_router.put(
     "/{schedule_id}",
     response_model=ScheduleResponse
@@ -107,7 +159,12 @@ def update_existing_schedule(
     schedule_data: ScheduleUpdate,
     db: Session = Depends(get_db),
     current_user=Depends(
-        require_role("HR Manager", "Admin")
+        require_role(
+            "HR Manager",
+            "HR Payroll User",
+            "HR Payroll Manager",
+            "Admin"
+        )
     )
 ):
     schedule = get_schedule(
@@ -135,6 +192,11 @@ def update_existing_schedule(
         )
 
 
+# ============================================================
+# DELETE SCHEDULE
+# HR Manager / HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @schedule_router.delete(
     "/{schedule_id}",
     response_model=ScheduleResponse
@@ -143,7 +205,12 @@ def delete_existing_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
     current_user=Depends(
-        require_role("HR Manager", "Admin")
+        require_role(
+            "HR Manager",
+            "HR Payroll User",
+            "HR Payroll Manager",
+            "Admin"
+        )
     )
 ):
     schedule = get_schedule(

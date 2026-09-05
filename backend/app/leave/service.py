@@ -467,13 +467,19 @@ def update_leave_request(
     ).first()
 
     if not leave_type:
-        raise ValueError("Active Time Off Type not found")
+        raise ValueError(
+            "Active Time Off Type not found"
+        )
 
     requested_amount = calculate_requested_amount(
         leave_type=leave_type,
         start_date=new_start_date,
         end_date=new_end_date,
-        requested_amount=None,
+        requested_amount=(
+            leave_request.requested_amount
+            if leave_type.unit == "Hours"
+            else None
+        ),
     )
 
     if leave_type.requires_allocation:

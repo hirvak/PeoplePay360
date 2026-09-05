@@ -1,7 +1,14 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, Numeric, String, Integer
+from sqlalchemy import (
+    Date,
+    DateTime,
+    Numeric,
+    String,
+    Integer,
+    JSON,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -30,11 +37,40 @@ class Payrun(Base):
         nullable=False
     )
 
+    # ========================================================
+    # PAYROLL CONFIGURATION
+    # ========================================================
+
+    salary_structure_id: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False
+    )
+
+    # Stores the employees explicitly selected
+    # for this payrun.
+    #
+    # Example:
+    # [1, 4, 7]
+    #
+    selected_employee_ids: Mapped[list] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list
+    )
+
+    # ========================================================
+    # PAYRUN STATUS
+    # ========================================================
+
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
         default="Draft"
     )
+
+    # ========================================================
+    # PAYRUN TOTALS
+    # ========================================================
 
     total_employees: Mapped[int] = mapped_column(
         Integer,
@@ -59,6 +95,10 @@ class Payrun(Base):
         nullable=False,
         default=0
     )
+
+    # ========================================================
+    # TIMESTAMPS
+    # ========================================================
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

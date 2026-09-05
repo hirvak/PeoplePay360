@@ -3,11 +3,13 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies import require_role
 from app.database.connection import get_db
+
 from app.salary.structure_schema import (
     SalaryStructureCreate,
     SalaryStructureResponse,
     SalaryStructureUpdate,
 )
+
 from app.salary.service import (
     create_salary_structure,
     get_salary_structures,
@@ -23,6 +25,11 @@ salary_structure_router = APIRouter(
 )
 
 
+# ============================================================
+# GET ALL SALARY STRUCTURES
+# HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @salary_structure_router.get(
     "/",
     response_model=list[SalaryStructureResponse]
@@ -31,7 +38,6 @@ def get_all_salary_structures(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
-            "HR Manager",
             "HR Payroll User",
             "HR Payroll Manager",
             "Admin"
@@ -40,6 +46,11 @@ def get_all_salary_structures(
 ):
     return get_salary_structures(db)
 
+
+# ============================================================
+# GET SINGLE SALARY STRUCTURE
+# HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
 
 @salary_structure_router.get(
     "/{structure_id}",
@@ -50,7 +61,6 @@ def get_single_salary_structure(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
-            "HR Manager",
             "HR Payroll User",
             "HR Payroll Manager",
             "Admin"
@@ -71,6 +81,11 @@ def get_single_salary_structure(
     return salary_structure
 
 
+# ============================================================
+# CREATE SALARY STRUCTURE
+# HR Payroll Manager / Admin
+# ============================================================
+
 @salary_structure_router.post(
     "/",
     response_model=SalaryStructureResponse,
@@ -81,7 +96,7 @@ def create_new_salary_structure(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
-            "HR Manager",
+            "HR Payroll Manager",
             "Admin"
         )
     )
@@ -99,6 +114,11 @@ def create_new_salary_structure(
         )
 
 
+# ============================================================
+# UPDATE SALARY STRUCTURE
+# HR Payroll Manager / Admin
+# ============================================================
+
 @salary_structure_router.put(
     "/{structure_id}",
     response_model=SalaryStructureResponse
@@ -109,7 +129,7 @@ def update_existing_salary_structure(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
-            "HR Manager",
+            "HR Payroll Manager",
             "Admin"
         )
     )
@@ -139,6 +159,11 @@ def update_existing_salary_structure(
         )
 
 
+# ============================================================
+# DELETE SALARY STRUCTURE
+# HR Payroll Manager / Admin
+# ============================================================
+
 @salary_structure_router.delete(
     "/{structure_id}",
     response_model=SalaryStructureResponse
@@ -148,7 +173,7 @@ def delete_existing_salary_structure(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
-            "HR Manager",
+            "HR Payroll Manager",
             "Admin"
         )
     )

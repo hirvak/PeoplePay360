@@ -1,8 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import require_role
+from app.core.dependencies import (
+    require_role,
+    get_current_employee,
+)
+
 from app.database.connection import get_db
+
+from app.leave.model import (
+    LeaveAllocation,
+    LeaveRequest,
+)
 
 from app.leave.schema import (
     TimeOffTypeCreate,
@@ -45,8 +54,90 @@ leave_router = APIRouter(
 
 
 # =========================================================
+# EMPLOYEE SELF-SERVICE
+# =========================================================
+
+
+# ---------------------------------------------------------
+# GET MY LEAVE REQUESTS
+# ---------------------------------------------------------
+
+@leave_router.get(
+    "/my-requests",
+    response_model=list[LeaveRequestResponse]
+)
+def get_my_leave_requests(
+    current_employee=Depends(get_current_employee),
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(LeaveRequest)
+        .filter(
+            LeaveRequest.employee_id == current_employee.id
+        )
+        .order_by(LeaveRequest.created_at.desc())
+        .all()
+    )
+
+
+# ---------------------------------------------------------
+# GET MY LEAVE BALANCE
+# ---------------------------------------------------------
+
+@leave_router.get(
+    "/my-balance",
+    response_model=list[LeaveAllocationResponse]
+)
+def get_my_leave_balance(
+    current_employee=Depends(get_current_employee),
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(LeaveAllocation)
+        .filter(
+            LeaveAllocation.employee_id == current_employee.id,
+            LeaveAllocation.status == "Approved"
+        )
+        .order_by(LeaveAllocation.end_date.desc())
+        .all()
+    )
+
+
+# ---------------------------------------------------------
+# CREATE MY LEAVE REQUEST
+# Employee can create ONLY for themselves
+# ---------------------------------------------------------
+
+@leave_router.post(
+    "/my-requests",
+    response_model=LeaveRequestResponse,
+    status_code=status.HTTP_201_CREATED
+)
+def create_my_leave_request(
+    request_data: LeaveRequestCreate,
+    current_employee=Depends(get_current_employee),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Never trust employee_id from the frontend.
+        request_data.employee_id = current_employee.id
+
+        return create_leave_request(
+            db,
+            request_data
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
+# =========================================================
 # TIME OFF TYPES
 # =========================================================
+
 
 @leave_router.get(
     "/types",
@@ -82,7 +173,10 @@ def get_single_time_off_type(
         )
     )
 ):
-    time_off_type = get_time_off_type(db, type_id)
+    time_off_type = get_time_off_type(
+        db,
+        type_id
+    )
 
     if not time_off_type:
         raise HTTPException(
@@ -113,6 +207,7 @@ def create_new_time_off_type(
             db,
             type_data
         )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -152,6 +247,7 @@ def update_existing_time_off_type(
             time_off_type,
             type_data
         )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -193,6 +289,7 @@ def delete_existing_time_off_type(
 # =========================================================
 # LEAVE ALLOCATIONS
 # =========================================================
+
 
 @leave_router.get(
     "/allocations",
@@ -262,6 +359,7 @@ def create_new_leave_allocation(
             db,
             allocation_data
         )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -301,6 +399,7 @@ def update_existing_leave_allocation(
             allocation,
             allocation_data
         )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -339,6 +438,7 @@ def approve_existing_leave_allocation(
             db,
             allocation
         )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -377,6 +477,7 @@ def reject_existing_leave_allocation(
             db,
             allocation
         )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -416,8 +517,9 @@ def delete_existing_leave_allocation(
 
 
 # =========================================================
-# LEAVE REQUESTS
+# LEAVE REQUESTS - HR MANAGEMENT
 # =========================================================
+
 
 @leave_router.get(
     "/requests",
@@ -467,6 +569,11 @@ def get_single_leave_request(
     return leave_request
 
 
+# ---------------------------------------------------------
+# CREATE LEAVE REQUEST - HR
+# Employee must use /my-requests
+# ---------------------------------------------------------
+
 @leave_router.post(
     "/requests",
     response_model=LeaveRequestResponse,
@@ -489,6 +596,7 @@ def create_new_leave_request(
             db,
             request_data
         )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -530,6 +638,7 @@ def update_existing_leave_request(
             leave_request,
             request_data
         )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -569,6 +678,7 @@ def approve_existing_leave_request(
             leave_request,
             current_user.id
         )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -608,6 +718,7 @@ def reject_existing_leave_request(
             leave_request,
             current_user.id
         )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,

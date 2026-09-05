@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -9,6 +11,7 @@ from app.payroll.payrun_schema import (
     PayrunResponse,
     PayrunUpdate,
 )
+
 from app.payroll.service import (
     create_payrun,
     get_payruns,
@@ -16,16 +19,83 @@ from app.payroll.service import (
     update_payrun,
     calculate_payrun,
     finalize_payrun,
-    cancel_payrun
+    cancel_payrun,
+    mark_payrun_paid,
+    get_eligible_employees,
 )
+
 from app.payroll.validation_service import validate_payrun
 from app.payroll.validation_schema import PayrunValidationResponse
-from app.payroll.service import mark_payrun_paid
+
+
 payrun_router = APIRouter(
     prefix="/payruns",
     tags=["Payruns"]
 )
 
+
+# ============================================================
+# GET ELIGIBLE EMPLOYEES FOR PAYRUN WIZARD
+# HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
+@payrun_router.get(
+    "/eligible-employees"
+)
+def get_payrun_eligible_employees(
+    salary_structure_id: int,
+    period_start: date,
+    period_end: date,
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_role(
+            "HR Payroll User",
+            "HR Payroll Manager",
+            "Admin"
+        )
+    )
+):
+    if period_end < period_start:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Payrun period end date cannot be "
+                "before start date"
+            )
+        )
+
+    try:
+        employees = get_eligible_employees(
+            db=db,
+            salary_structure_id=salary_structure_id,
+            period_start=period_start,
+            period_end=period_end
+        )
+
+        return [
+            {
+                "id": employee.id,
+                "employee_code": employee.employee_code,
+                "first_name": employee.first_name,
+                "last_name": employee.last_name,
+                "job_position": employee.job_position,
+                "department_id": employee.department_id,
+                "employment_status": employee.employment_status,
+            }
+            for employee in employees
+        ]
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
+# ============================================================
+# GET ALL PAYRUNS
+# HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
 
 @payrun_router.get(
     "/",
@@ -37,13 +107,17 @@ def get_all_payruns(
         require_role(
             "HR Payroll User",
             "HR Payroll Manager",
-            "HR Manager",
             "Admin"
         )
     )
 ):
     return get_payruns(db)
 
+
+# ============================================================
+# GET SINGLE PAYRUN
+# HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
 
 @payrun_router.get(
     "/{payrun_id}",
@@ -56,12 +130,14 @@ def get_single_payrun(
         require_role(
             "HR Payroll User",
             "HR Payroll Manager",
-            "HR Manager",
             "Admin"
         )
     )
 ):
-    payrun = get_payrun(db, payrun_id)
+    payrun = get_payrun(
+        db,
+        payrun_id
+    )
 
     if not payrun:
         raise HTTPException(
@@ -71,6 +147,11 @@ def get_single_payrun(
 
     return payrun
 
+
+# ============================================================
+# CREATE PAYRUN
+# HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
 
 @payrun_router.post(
     "/",
@@ -82,6 +163,7 @@ def create_new_payrun(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
+            "HR Payroll User",
             "HR Payroll Manager",
             "Admin"
         )
@@ -100,6 +182,11 @@ def create_new_payrun(
         )
 
 
+# ============================================================
+# UPDATE PAYRUN
+# HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @payrun_router.put(
     "/{payrun_id}",
     response_model=PayrunResponse
@@ -110,12 +197,16 @@ def update_existing_payrun(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
+            "HR Payroll User",
             "HR Payroll Manager",
             "Admin"
         )
     )
 ):
-    payrun = get_payrun(db, payrun_id)
+    payrun = get_payrun(
+        db,
+        payrun_id
+    )
 
     if not payrun:
         raise HTTPException(
@@ -135,6 +226,12 @@ def update_existing_payrun(
             status_code=400,
             detail=str(e)
         )
+
+
+# ============================================================
+# CALCULATE PAYRUN
+# HR Payroll Manager / Admin
+# ============================================================
 
 @payrun_router.post(
     "/{payrun_id}/calculate",
@@ -172,7 +269,13 @@ def calculate_existing_payrun(
             status_code=400,
             detail=str(e)
         )
-    
+
+
+# ============================================================
+# CANCEL PAYRUN
+# HR Payroll Manager / Admin
+# ============================================================
+
 @payrun_router.delete(
     "/{payrun_id}",
     response_model=PayrunResponse
@@ -187,7 +290,10 @@ def cancel_existing_payrun(
         )
     )
 ):
-    payrun = get_payrun(db, payrun_id)
+    payrun = get_payrun(
+        db,
+        payrun_id
+    )
 
     if not payrun:
         raise HTTPException(
@@ -206,6 +312,12 @@ def cancel_existing_payrun(
             status_code=400,
             detail=str(e)
         )
+
+
+# ============================================================
+# FINALIZE PAYRUN
+# HR Payroll Manager / Admin
+# ============================================================
 
 @payrun_router.post(
     "/{payrun_id}/finalize",
@@ -245,6 +357,11 @@ def finalize_existing_payrun(
         )
 
 
+# ============================================================
+# VALIDATE PAYRUN
+# HR Payroll Manager / Admin
+# ============================================================
+
 @payrun_router.post(
     "/{payrun_id}/validate",
     response_model=PayrunValidationResponse
@@ -274,6 +391,12 @@ def validate_existing_payrun(
         db,
         payrun
     )
+
+
+# ============================================================
+# MARK PAYRUN AS PAID
+# HR Payroll Manager / Admin
+# ============================================================
 
 @payrun_router.post(
     "/{payrun_id}/mark-paid",
@@ -305,6 +428,7 @@ def mark_payrun_as_paid(
             db,
             payrun
         )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,

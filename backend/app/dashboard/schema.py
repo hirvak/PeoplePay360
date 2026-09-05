@@ -10,6 +10,7 @@ class DashboardSummaryResponse(BaseModel):
     approved_time_off: int
     attendance_health: float
 
+
 class SalaryDepartmentResponse(BaseModel):
     department: str
     salary_cost: Decimal
@@ -18,3 +19,16 @@ class SalaryDepartmentResponse(BaseModel):
 class MonthlySalaryResponse(BaseModel):
     month: str
     net_salary: Decimal
+
+
+class DashboardAlert(BaseModel):
+    type: str
+    severity: str
+    title: str
+    message: str
+    reference_id: int | None = None
+
+
+class DashboardAlertsResponse(BaseModel):
+    alerts: list[DashboardAlert]
+    total: int

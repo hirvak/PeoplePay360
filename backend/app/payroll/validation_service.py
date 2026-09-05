@@ -5,6 +5,7 @@ from app.payroll.payslip_model import Payslip
 from app.payroll.payslip_line_model import PayslipLine
 from app.contracts.model import Contract
 from app.salary.rule_model import SalaryRule
+from app.salary.structure_model import SalaryStructure
 from app.employees.model import Employee
 
 
@@ -19,10 +20,11 @@ def validate_payrun(
     # Payrun status
     # --------------------------------
 
-    if payrun.status not in {"Calculated"}:
+    if payrun.status != "Calculated":
         errors.append(
             "Payrun must be Calculated before validation"
         )
+
         return {
             "valid": False,
             "warnings": warnings,
@@ -48,6 +50,32 @@ def validate_payrun(
         )
 
     # --------------------------------
+    # Employee count
+    # --------------------------------
+
+    if payrun.total_employees != len(payslips):
+        errors.append(
+            "Payrun employee count does not match "
+            "the number of generated payslips"
+        )
+
+    # --------------------------------
+    # Duplicate payslip check
+    # --------------------------------
+
+    employee_ids = set()
+
+    for payslip in payslips:
+
+        if payslip.employee_id in employee_ids:
+            errors.append(
+                f"Duplicate payslip found for "
+                f"employee {payslip.employee_id}"
+            )
+
+        employee_ids.add(payslip.employee_id)
+
+    # --------------------------------
     # Check each payslip
     # --------------------------------
 
@@ -67,7 +95,25 @@ def validate_payrun(
             else f"Employee {payslip.employee_id}"
         )
 
+        # --------------------------------
+        # Employee check
+        # --------------------------------
+
+        if not employee:
+            errors.append(
+                f"{employee_name}: Employee not found"
+            )
+            continue
+
+        if not employee.is_active:
+            errors.append(
+                f"{employee_name}: Employee is inactive"
+            )
+
+        # --------------------------------
         # Contract check
+        # --------------------------------
+
         contract = (
             db.query(Contract)
             .filter(
@@ -82,22 +128,95 @@ def validate_payrun(
                 f"{employee_name}: "
                 "Active contract not found"
             )
+        else:
 
+            # Contract must belong to the payslip employee
+            if contract.employee_id != payslip.employee_id:
+                errors.append(
+                    f"{employee_name}: "
+                    "Contract does not belong to the employee"
+                )
+
+            # Contract must cover the complete payrun period
+            if contract.start_date > payrun.period_start:
+                errors.append(
+                    f"{employee_name}: "
+                    "Contract starts after the payrun period begins"
+                )
+
+            if (
+                contract.end_date is not None
+                and contract.end_date < payrun.period_end
+            ):
+                errors.append(
+                    f"{employee_name}: "
+                    "Contract ends before the payrun period ends"
+                )
+
+            # Contract salary structure must match payslip
+            if (
+                contract.salary_structure_id
+                != payslip.salary_structure_id
+            ):
+                errors.append(
+                    f"{employee_name}: "
+                    "Payslip salary structure does not match "
+                    "contract salary structure"
+                )
+
+            # Contract wage must match payslip basic wage
+            if contract.wage != payslip.basic_wage:
+                errors.append(
+                    f"{employee_name}: "
+                    "Payslip basic wage does not match contract wage"
+                )
+
+        # --------------------------------
         # Salary structure check
+        # --------------------------------
+
         if not payslip.salary_structure_id:
             errors.append(
                 f"{employee_name}: "
                 "Salary structure is missing"
             )
 
+        else:
+            salary_structure = (
+                db.query(SalaryStructure)
+                .filter(
+                    SalaryStructure.id
+                    == payslip.salary_structure_id
+                )
+                .first()
+            )
+
+            if not salary_structure:
+                errors.append(
+                    f"{employee_name}: "
+                    "Salary structure not found"
+                )
+
+            elif not salary_structure.is_active:
+                errors.append(
+                    f"{employee_name}: "
+                    "Salary structure is inactive"
+                )
+
+        # --------------------------------
         # Payslip status
+        # --------------------------------
+
         if payslip.status != "Calculated":
             errors.append(
                 f"{employee_name}: "
                 f"Payslip status is {payslip.status}"
             )
 
+        # --------------------------------
         # Period check
+        # --------------------------------
+
         if (
             payslip.period_start != payrun.period_start
             or payslip.period_end != payrun.period_end
@@ -107,7 +226,10 @@ def validate_payrun(
                 "Payslip period does not match payrun period"
             )
 
-        # Payslip lines
+        # --------------------------------
+        # Salary rule lines
+        # --------------------------------
+
         lines = (
             db.query(PayslipLine)
             .filter(
@@ -122,33 +244,65 @@ def validate_payrun(
                 "No salary rule lines found"
             )
 
-        # Zero net salary warning
+        else:
+            for line in lines:
+
+                if not line.salary_rule_id:
+                    errors.append(
+                        f"{employee_name}: "
+                        "Payslip line has no salary rule"
+                    )
+                    continue
+
+                rule = (
+                    db.query(SalaryRule)
+                    .filter(
+                        SalaryRule.id == line.salary_rule_id
+                    )
+                    .first()
+                )
+
+                if not rule:
+                    errors.append(
+                        f"{employee_name}: "
+                        f"Salary rule {line.salary_rule_id} "
+                        "not found"
+                    )
+
+                elif rule.salary_structure_id != payslip.salary_structure_id:
+                    errors.append(
+                        f"{employee_name}: "
+                        "Payslip contains a salary rule "
+                        "from a different salary structure"
+                    )
+
+        # --------------------------------
+        # Zero / negative net warning
+        # --------------------------------
+
         if payslip.net_amount <= 0:
             warnings.append(
                 f"{employee_name}: "
                 "Net salary is zero or negative"
             )
 
-    # --------------------------------
-    # Duplicate payslip check
-    # --------------------------------
+        # --------------------------------
+        # Negative deduction warning
+        # --------------------------------
 
-    employee_ids = {}
-
-    for payslip in payslips:
-
-        if payslip.employee_id in employee_ids:
-
+        if payslip.deduction_amount < 0:
             errors.append(
-                f"Duplicate payslip found for "
-                f"employee {payslip.employee_id}"
+                f"{employee_name}: "
+                "Deduction amount cannot be negative"
             )
 
-        employee_ids[payslip.employee_id] = payslip.id
 
-    # --------------------------------
-    # Payrun totals validation
-    # --------------------------------
+        if payslip.gross_amount < payslip.basic_wage:
+            warnings.append(
+                f"{employee_name}: "
+                "Gross salary is lower than basic wage"
+            )
+
 
     calculated_gross = sum(
         (
@@ -192,9 +346,7 @@ def validate_payrun(
             "payslip totals"
         )
 
-    # --------------------------------
-    # Final result
-    # --------------------------------
+
 
     return {
         "valid": len(errors) == 0,

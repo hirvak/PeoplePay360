@@ -18,11 +18,7 @@ from app.employees.model import Employee
 from app.schedules.model import Schedule, ScheduleDay
 from app.contracts.model import Contract
 from app.attendance.model import Attendance
-from app.leave.model import (
-    TimeOffType,
-    LeaveAllocation,
-    LeaveRequest,
-)
+from app.leave.model import TimeOffType,LeaveAllocation,LeaveRequest
 from app.salary.structure_model import SalaryStructure
 from app.salary.rule_model import SalaryRule
 from app.payroll.payrun_model import Payrun
@@ -30,11 +26,14 @@ from app.payroll.payslip_model import Payslip
 from app.payroll.payslip_line_model import PayslipLine
 from app.dashboard.router import dashboard_router
 from fastapi.middleware.cors import CORSMiddleware
+from app.admin.router import admin_router
+
 app = FastAPI(
     title="PeoplePay360 HR & Payroll API",
     description="Integrated HR and Payroll Operations Platform",
     version="1.0.0"
 )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -45,6 +44,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 app.include_router(role_router)
 app.include_router(auth_router)
 app.include_router(department_router)
@@ -58,6 +58,8 @@ app.include_router(salary_rule_router)
 app.include_router(payrun_router)
 app.include_router(payslip_router)
 app.include_router(dashboard_router)
+app.include_router(admin_router)
+
 @app.get("/")
 def root():
     return {

@@ -25,6 +25,11 @@ salary_rule_router = APIRouter(
 )
 
 
+# ============================================================
+# GET ALL SALARY RULES
+# HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @salary_rule_router.get(
     "/",
     response_model=list[SalaryRuleResponse]
@@ -33,7 +38,6 @@ def get_all_salary_rules(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
-            "HR Manager",
             "HR Payroll User",
             "HR Payroll Manager",
             "Admin"
@@ -42,6 +46,11 @@ def get_all_salary_rules(
 ):
     return get_salary_rules(db)
 
+
+# ============================================================
+# GET SINGLE SALARY RULE
+# HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
 
 @salary_rule_router.get(
     "/{rule_id}",
@@ -52,7 +61,6 @@ def get_single_salary_rule(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
-            "HR Manager",
             "HR Payroll User",
             "HR Payroll Manager",
             "Admin"
@@ -73,6 +81,11 @@ def get_single_salary_rule(
     return salary_rule
 
 
+# ============================================================
+# CREATE SALARY RULE
+# HR Payroll Manager / Admin
+# ============================================================
+
 @salary_rule_router.post(
     "/",
     response_model=SalaryRuleResponse,
@@ -83,7 +96,7 @@ def create_new_salary_rule(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
-            "HR Manager",
+            "HR Payroll Manager",
             "Admin"
         )
     )
@@ -101,6 +114,11 @@ def create_new_salary_rule(
         )
 
 
+# ============================================================
+# UPDATE SALARY RULE
+# HR Payroll Manager / Admin
+# ============================================================
+
 @salary_rule_router.put(
     "/{rule_id}",
     response_model=SalaryRuleResponse
@@ -111,7 +129,7 @@ def update_existing_salary_rule(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
-            "HR Manager",
+            "HR Payroll Manager",
             "Admin"
         )
     )
@@ -123,8 +141,8 @@ def update_existing_salary_rule(
 
     if not salary_rule:
         raise HTTPException(
-        status_code=404,
-        detail="Salary Rule not found"
+            status_code=404,
+            detail="Salary Rule not found"
         )
 
     try:
@@ -141,6 +159,11 @@ def update_existing_salary_rule(
         )
 
 
+# ============================================================
+# DELETE SALARY RULE
+# HR Payroll Manager / Admin
+# ============================================================
+
 @salary_rule_router.delete(
     "/{rule_id}",
     response_model=SalaryRuleResponse
@@ -150,7 +173,7 @@ def delete_existing_salary_rule(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
-            "HR Manager",
+            "HR Payroll Manager",
             "Admin"
         )
     )

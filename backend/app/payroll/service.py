@@ -23,6 +23,7 @@ VALID_STATUSES = {
     "Draft",
     "Calculated",
     "Finalized",
+    "Paid",
     "Cancelled",
 }
 
@@ -73,6 +74,225 @@ def check_payrun_overlap(
 
 
 # ============================================================
+# SALARY STRUCTURE VALIDATION
+# ============================================================
+
+def get_active_salary_structure(
+    db: Session,
+    salary_structure_id: int
+):
+    salary_structure = (
+        db.query(SalaryStructure)
+        .filter(
+            SalaryStructure.id == salary_structure_id,
+            SalaryStructure.is_active.is_(True)
+        )
+        .first()
+    )
+
+    if not salary_structure:
+        raise ValueError(
+            "Active Salary Structure not found"
+        )
+
+    return salary_structure
+
+
+# ============================================================
+# EMPLOYEE ELIGIBILITY
+# ============================================================
+
+def get_applicable_contract(
+    db: Session,
+    employee_id: int,
+    period_start: date,
+    period_end: date
+):
+    contracts = (
+        db.query(Contract)
+        .filter(
+            Contract.employee_id == employee_id,
+            Contract.is_active.is_(True),
+            Contract.start_date <= period_end,
+            (
+                (Contract.end_date.is_(None))
+                | (
+                    Contract.end_date >= period_start
+                )
+            ),
+        )
+        .all()
+    )
+
+    if not contracts:
+        raise ValueError(
+            "No applicable active contract found"
+        )
+
+    if len(contracts) > 1:
+        raise ValueError(
+            "Multiple applicable active contracts found"
+        )
+
+    return contracts[0]
+
+
+def get_eligible_employees(
+    db: Session,
+    salary_structure_id: int,
+    period_start: date,
+    period_end: date
+):
+    """
+    Return active employees who are eligible for
+    the selected salary structure and payrun period.
+
+    Eligibility requires:
+        - Employee is active
+        - Exactly one applicable active contract
+        - Contract has the selected salary structure
+    """
+
+    get_active_salary_structure(
+        db,
+        salary_structure_id
+    )
+
+    employees = (
+        db.query(Employee)
+        .filter(
+            Employee.is_active.is_(True)
+        )
+        .order_by(
+            Employee.id
+        )
+        .all()
+    )
+
+    eligible_employees = []
+
+    for employee in employees:
+
+        try:
+            contract = get_applicable_contract(
+                db=db,
+                employee_id=employee.id,
+                period_start=period_start,
+                period_end=period_end
+            )
+
+            if contract.salary_structure_id != salary_structure_id:
+                continue
+
+            eligible_employees.append(employee)
+
+        except ValueError:
+            continue
+
+    return eligible_employees
+
+
+# ============================================================
+# VALIDATE SELECTED EMPLOYEES
+# ============================================================
+
+def validate_selected_employees(
+    db: Session,
+    selected_employee_ids: list[int],
+    salary_structure_id: int,
+    period_start: date,
+    period_end: date
+):
+    if not selected_employee_ids:
+        raise ValueError(
+            "At least one employee must be selected"
+        )
+
+    # Remove duplicate IDs while preserving order
+    unique_employee_ids = list(
+        dict.fromkeys(selected_employee_ids)
+    )
+
+    if len(unique_employee_ids) != len(
+        selected_employee_ids
+    ):
+        raise ValueError(
+            "Duplicate employee IDs are not allowed"
+        )
+
+    get_active_salary_structure(
+        db,
+        salary_structure_id
+    )
+
+    employees = (
+        db.query(Employee)
+        .filter(
+            Employee.id.in_(unique_employee_ids)
+        )
+        .all()
+    )
+
+    employee_map = {
+        employee.id: employee
+        for employee in employees
+    }
+
+    errors = []
+
+    for employee_id in unique_employee_ids:
+
+        employee = employee_map.get(
+            employee_id
+        )
+
+        if not employee:
+            errors.append(
+                f"Employee {employee_id} not found"
+            )
+            continue
+
+        if not employee.is_active:
+            errors.append(
+                f"Employee {employee.employee_code} "
+                "is inactive"
+            )
+            continue
+
+        try:
+            contract = get_applicable_contract(
+                db=db,
+                employee_id=employee.id,
+                period_start=period_start,
+                period_end=period_end
+            )
+
+            if contract.salary_structure_id != salary_structure_id:
+                errors.append(
+                    f"{employee.employee_code}: "
+                    "applicable contract does not use "
+                    "the selected Salary Structure"
+                )
+
+        except ValueError as e:
+
+            errors.append(
+                f"{employee.employee_code}: {str(e)}"
+            )
+
+    if errors:
+        raise ValueError(
+            "Selected employee validation failed:\n"
+            + "\n".join(errors)
+        )
+
+    return [
+        employee_map[employee_id]
+        for employee_id in unique_employee_ids
+    ]
+
+
+# ============================================================
 # CREATE PAYRUN
 # ============================================================
 
@@ -80,6 +300,17 @@ def create_payrun(
     db: Session,
     payrun_data: PayrunCreate
 ):
+    """
+    Create a Draft Payrun.
+
+    The payrun stores:
+        - Salary Structure
+        - Period
+        - Explicitly selected employees
+
+    Payroll is not calculated at creation time.
+    """
+
     validate_payrun_dates(
         payrun_data.period_start,
         payrun_data.period_end
@@ -91,10 +322,35 @@ def create_payrun(
         period_end=payrun_data.period_end
     )
 
+    # Validate selected salary structure
+    get_active_salary_structure(
+        db,
+        payrun_data.salary_structure_id
+    )
+
+    # Validate selected employees
+    validate_selected_employees(
+        db=db,
+        selected_employee_ids=(
+            payrun_data.selected_employee_ids
+        ),
+        salary_structure_id=(
+            payrun_data.salary_structure_id
+        ),
+        period_start=payrun_data.period_start,
+        period_end=payrun_data.period_end
+    )
+
     payrun = Payrun(
         name=payrun_data.name,
         period_start=payrun_data.period_start,
         period_end=payrun_data.period_end,
+        salary_structure_id=(
+            payrun_data.salary_structure_id
+        ),
+        selected_employee_ids=(
+            payrun_data.selected_employee_ids
+        ),
         status="Draft",
         total_employees=0,
         total_gross=0,
@@ -165,6 +421,16 @@ def update_payrun(
         payrun.period_end
     )
 
+    new_salary_structure_id = update_data.get(
+        "salary_structure_id",
+        payrun.salary_structure_id
+    )
+
+    new_employee_ids = update_data.get(
+        "selected_employee_ids",
+        payrun.selected_employee_ids
+    )
+
     validate_payrun_dates(
         new_period_start,
         new_period_end
@@ -177,12 +443,29 @@ def update_payrun(
         exclude_payrun_id=payrun.id
     )
 
-    for field, value in update_data.items():
-        setattr(
-            payrun,
-            field,
-            value
-        )
+    # Validate new salary structure and employees
+    validate_selected_employees(
+        db=db,
+        selected_employee_ids=new_employee_ids,
+        salary_structure_id=new_salary_structure_id,
+        period_start=new_period_start,
+        period_end=new_period_end
+    )
+
+    # Update normal fields
+    payrun.name = update_data.get(
+        "name",
+        payrun.name
+    )
+
+    payrun.period_start = new_period_start
+    payrun.period_end = new_period_end
+    payrun.salary_structure_id = (
+        new_salary_structure_id
+    )
+    payrun.selected_employee_ids = (
+        new_employee_ids
+    )
 
     db.commit()
     db.refresh(payrun)
@@ -199,31 +482,30 @@ def calculate_payrun(
     payrun: Payrun
 ):
     """
-    Calculate payroll for all active employees
-    with an applicable active contract.
+    Calculate payroll only for the employees explicitly
+    selected in the Payrun.
 
-    For every employee:
+    Workflow:
 
-        Employee
-            ↓
-        Applicable Contract
-            ↓
         Salary Structure
-            ↓
+                +
+        Selected Employees
+                +
+        Payrun Period
+                ↓
+        Applicable Contracts
+                ↓
         Salary Rules
-            ↓
+                ↓
         Payroll Engine
-            ↓
-        Payslip
-            ↓
+                ↓
+        Payslips
+                ↓
         Payslip Lines
-
-    The complete operation is committed only if
-    all employees can be calculated successfully.
     """
 
     # --------------------------------------------------------
-    # Payrun must be in Draft state
+    # Payrun must be Draft
     # --------------------------------------------------------
 
     if payrun.status != "Draft":
@@ -232,31 +514,35 @@ def calculate_payrun(
         )
 
     # --------------------------------------------------------
-    # Find active employees
+    # Validate salary structure
     # --------------------------------------------------------
 
-    employees = (
-        db.query(Employee)
-        .filter(
-            Employee.is_active.is_(True)
-        )
-        .order_by(
-            Employee.id
-        )
-        .all()
+    salary_structure = get_active_salary_structure(
+        db,
+        payrun.salary_structure_id
     )
 
-    if not employees:
-        raise ValueError(
-            "No active employees found for this payrun"
-        )
+    # --------------------------------------------------------
+    # Validate selected employees
+    # --------------------------------------------------------
+
+    employees = validate_selected_employees(
+        db=db,
+        selected_employee_ids=(
+            payrun.selected_employee_ids
+        ),
+        salary_structure_id=(
+            payrun.salary_structure_id
+        ),
+        period_start=payrun.period_start,
+        period_end=payrun.period_end
+    )
 
     calculated_payslips = []
-
     errors = []
 
     # --------------------------------------------------------
-    # Process every active employee
+    # Process selected employees only
     # --------------------------------------------------------
 
     for employee in employees:
@@ -264,62 +550,26 @@ def calculate_payrun(
         try:
 
             # ------------------------------------------------
-            # Find applicable contracts
+            # Find applicable contract
             # ------------------------------------------------
 
-            contracts = (
-                db.query(Contract)
-                .filter(
-                    Contract.employee_id == employee.id,
-                    Contract.is_active.is_(True),
-                    Contract.start_date <= payrun.period_end,
-                    (
-                        (Contract.end_date.is_(None))
-                        | (
-                            Contract.end_date
-                            >= payrun.period_start
-                        )
-                    ),
-                )
-                .all()
+            contract = get_applicable_contract(
+                db=db,
+                employee_id=employee.id,
+                period_start=payrun.period_start,
+                period_end=payrun.period_end
             )
 
-            # No contract
-            if not contracts:
-                raise ValueError(
-                    "No applicable active contract found"
-                )
-
-            # Multiple contracts
-            if len(contracts) > 1:
-                raise ValueError(
-                    "Multiple applicable active contracts found"
-                )
-
-            contract = contracts[0]
-
             # ------------------------------------------------
-            # Salary structure validation
+            # Contract must use selected structure
             # ------------------------------------------------
 
-            if contract.salary_structure_id is None:
+            if contract.salary_structure_id != (
+                payrun.salary_structure_id
+            ):
                 raise ValueError(
-                    "Employee contract has no salary structure assigned"
-                )
-
-            salary_structure = (
-                db.query(SalaryStructure)
-                .filter(
-                    SalaryStructure.id
-                    == contract.salary_structure_id,
-                    SalaryStructure.is_active.is_(True)
-                )
-                .first()
-            )
-
-            if not salary_structure:
-                raise ValueError(
-                    "Active Salary Structure not found"
+                    "Employee contract does not use "
+                    "the selected Salary Structure"
                 )
 
             # ------------------------------------------------
@@ -346,7 +596,9 @@ def calculate_payrun(
 
             payroll_result = calculate_salary_rules(
                 db=db,
-                salary_structure_id=salary_structure.id,
+                salary_structure_id=(
+                    salary_structure.id
+                ),
                 basic_wage=contract.wage
             )
 
@@ -358,13 +610,21 @@ def calculate_payrun(
                 payrun_id=payrun.id,
                 employee_id=employee.id,
                 contract_id=contract.id,
-                salary_structure_id=salary_structure.id,
+                salary_structure_id=(
+                    salary_structure.id
+                ),
                 period_start=payrun.period_start,
                 period_end=payrun.period_end,
                 basic_wage=contract.wage,
-                gross_amount=payroll_result["gross"],
-                deduction_amount=payroll_result["deductions"],
-                net_amount=payroll_result["net"],
+                gross_amount=(
+                    payroll_result["gross"]
+                ),
+                deduction_amount=(
+                    payroll_result["deductions"]
+                ),
+                net_amount=(
+                    payroll_result["net"]
+                ),
                 status="Calculated",
             )
 
@@ -410,7 +670,7 @@ def calculate_payrun(
             )
 
     # --------------------------------------------------------
-    # If ANY employee has an error,
+    # If ANY selected employee has an error,
     # don't partially calculate the payrun.
     # --------------------------------------------------------
 
@@ -474,7 +734,6 @@ def calculate_payrun(
     # --------------------------------------------------------
 
     db.commit()
-
     db.refresh(payrun)
 
     return payrun
@@ -488,9 +747,12 @@ def cancel_payrun(
     db: Session,
     payrun: Payrun
 ):
-    if payrun.status == "Finalized":
+    if payrun.status in {
+        "Finalized",
+        "Paid"
+    }:
         raise ValueError(
-            "Finalized payrun cannot be cancelled"
+            "Finalized or Paid payrun cannot be cancelled"
         )
 
     if payrun.status == "Cancelled":
@@ -505,6 +767,11 @@ def cancel_payrun(
 
     return payrun
 
+
+# ============================================================
+# FINALIZE PAYRUN
+# ============================================================
+
 def finalize_payrun(
     db: Session,
     payrun: Payrun
@@ -517,12 +784,9 @@ def finalize_payrun(
         - At least one payslip exists
         - All payslips are Calculated
         - Every payslip has a contract
-        - Every payslip has a salary structure
-        - Payrun totals match the payslip totals
-
-    Once finalized:
-        - All payslips become Finalized
-        - Payrun becomes Finalized
+        - Every payslip has the selected salary structure
+        - Every payslip period matches the payrun
+        - Payrun totals match payslip totals
     """
 
     # --------------------------------
@@ -553,11 +817,11 @@ def finalize_payrun(
             "Cannot finalize payrun without payslips"
         )
 
+    errors = []
+
     # --------------------------------
     # Validate every payslip
     # --------------------------------
-
-    errors = []
 
     for payslip in payslips:
 
@@ -578,16 +842,148 @@ def finalize_payrun(
                 "has no salary structure"
             )
 
-        if payslip.period_start != payrun.period_start:
+        if payslip.salary_structure_id != (
+            payrun.salary_structure_id
+        ):
+            errors.append(
+                f"Payslip {payslip.id} "
+                "does not use the Payrun Salary Structure"
+            )
+
+        if payslip.period_start != (
+            payrun.period_start
+        ):
             errors.append(
                 f"Payslip {payslip.id} "
                 "period start does not match payrun"
             )
 
-        if payslip.period_end != payrun.period_end:
+        if payslip.period_end != (
+            payrun.period_end
+        ):
             errors.append(
                 f"Payslip {payslip.id} "
                 "period end does not match payrun"
+            )
+
+        # --------------------------------
+        # Validate employee
+        # --------------------------------
+
+        employee = (
+            db.query(Employee)
+            .filter(
+                Employee.id == payslip.employee_id
+            )
+            .first()
+        )
+
+        if not employee:
+            errors.append(
+                f"Payslip {payslip.id}: "
+                "Employee not found"
+            )
+            continue
+
+        if not employee.is_active:
+            errors.append(
+                f"Payslip {payslip.id}: "
+                "Employee is inactive"
+            )
+
+        if payslip.employee_id not in (
+            payrun.selected_employee_ids
+        ):
+            errors.append(
+                f"Payslip {payslip.id}: "
+                "Employee was not selected for this payrun"
+            )
+
+        # --------------------------------
+        # Validate contract
+        # --------------------------------
+
+        if payslip.contract_id:
+
+            contract = (
+                db.query(Contract)
+                .filter(
+                    Contract.id == payslip.contract_id
+                )
+                .first()
+            )
+
+            if not contract:
+                errors.append(
+                    f"Payslip {payslip.id}: "
+                    "Contract not found"
+                )
+            else:
+
+                if contract.employee_id != (
+                    payslip.employee_id
+                ):
+                    errors.append(
+                        f"Payslip {payslip.id}: "
+                        "Contract does not belong "
+                        "to the payslip employee"
+                    )
+
+                if not contract.is_active:
+                    errors.append(
+                        f"Payslip {payslip.id}: "
+                        "Contract is inactive"
+                    )
+
+                if contract.start_date > (
+                    payrun.period_start
+                ):
+                    errors.append(
+                        f"Payslip {payslip.id}: "
+                        "Contract starts after "
+                        "the payrun period"
+                    )
+
+                if (
+                    contract.end_date is not None
+                    and contract.end_date < (
+                        payrun.period_end
+                    )
+                ):
+                    errors.append(
+                        f"Payslip {payslip.id}: "
+                        "Contract ends before "
+                        "the payrun period"
+                    )
+
+                if contract.salary_structure_id != (
+                    payrun.salary_structure_id
+                ):
+                    errors.append(
+                        f"Payslip {payslip.id}: "
+                        "Contract does not use "
+                        "the Payrun Salary Structure"
+                    )
+
+        # --------------------------------
+        # Validate salary structure
+        # --------------------------------
+
+        salary_structure = (
+            db.query(SalaryStructure)
+            .filter(
+                SalaryStructure.id == (
+                    payslip.salary_structure_id
+                ),
+                SalaryStructure.is_active.is_(True)
+            )
+            .first()
+        )
+
+        if not salary_structure:
+            errors.append(
+                f"Payslip {payslip.id}: "
+                "Active Salary Structure not found"
             )
 
     # --------------------------------
@@ -618,7 +1014,9 @@ def finalize_payrun(
         Decimal("0")
     )
 
-    if payrun.total_employees != len(payslips):
+    if payrun.total_employees != len(
+        payslips
+    ):
         errors.append(
             "Payrun employee total does not match "
             "the number of payslips"
@@ -640,6 +1038,22 @@ def finalize_payrun(
         errors.append(
             "Payrun net total does not match "
             "payslip totals"
+        )
+
+    # --------------------------------
+    # Validate selected employee count
+    # --------------------------------
+
+    selected_employee_count = len(
+        payrun.selected_employee_ids
+    )
+
+    if selected_employee_count != len(
+        payslips
+    ):
+        errors.append(
+            "Selected employee count does not match "
+            "the number of payslips"
         )
 
     # --------------------------------
@@ -670,7 +1084,15 @@ def finalize_payrun(
 
     return payrun
 
-def mark_payrun_paid(db: Session, payrun: Payrun):
+
+# ============================================================
+# MARK PAYRUN AS PAID
+# ============================================================
+
+def mark_payrun_paid(
+    db: Session,
+    payrun: Payrun
+):
     if payrun.status != "Finalized":
         raise ValueError(
             "Only Finalized payruns can be marked as Paid"
@@ -687,10 +1109,12 @@ def mark_payrun_paid(db: Session, payrun: Payrun):
 
     if not payslips:
         raise ValueError(
-            "Cannot mark payrun as Paid because no payslips exist"
+            "Cannot mark payrun as Paid because "
+            "no payslips exist"
         )
 
     for payslip in payslips:
+
         if payslip.status != "Finalized":
             raise ValueError(
                 f"Payslip {payslip.id} is not Finalized"

@@ -1,12 +1,16 @@
 from fastapi import APIRouter, Depends
+
 from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
+
 from app.core.dependencies import require_role
+
 from app.dashboard.service import (
     get_dashboard_summary,
-    get_salary_by_department,
-    get_monthly_net_salary,
+    get_salary_cost_by_department,
+    get_monthly_net_salary_trends,
+    get_dashboard_alerts,
 )
 
 from app.dashboard.schema import (
@@ -14,11 +18,18 @@ from app.dashboard.schema import (
     SalaryDepartmentResponse,
     MonthlySalaryResponse,
 )
+
+
 dashboard_router = APIRouter(
     prefix="/dashboard",
     tags=["Dashboard"]
 )
 
+
+# ============================================================
+# DASHBOARD SUMMARY
+# HR Manager / HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
 
 @dashboard_router.get(
     "/summary",
@@ -37,6 +48,12 @@ def dashboard_summary(
 ):
     return get_dashboard_summary(db)
 
+
+# ============================================================
+# SALARY COST BY DEPARTMENT
+# HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @dashboard_router.get(
     "/salary-by-department",
     response_model=list[SalaryDepartmentResponse]
@@ -51,8 +68,13 @@ def salary_by_department(
         )
     )
 ):
-    return get_salary_by_department(db)
+    return get_salary_cost_by_department(db)
 
+
+# ============================================================
+# MONTHLY NET SALARY
+# HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
 
 @dashboard_router.get(
     "/monthly-net-salary",
@@ -68,4 +90,26 @@ def monthly_net_salary(
         )
     )
 ):
-    return get_monthly_net_salary(db)
+    return get_monthly_net_salary_trends(db)
+
+
+# ============================================================
+# DASHBOARD ALERTS
+# HR Manager / HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
+@dashboard_router.get(
+    "/alerts"
+)
+def dashboard_alerts(
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_role(
+            "HR Manager",
+            "HR Payroll User",
+            "HR Payroll Manager",
+            "Admin"
+        )
+    )
+):
+    return get_dashboard_alerts(db)

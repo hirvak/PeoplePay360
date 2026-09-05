@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import require_role
+from app.core.dependencies import (
+    require_role,
+    get_current_employee,
+)
 from app.database.connection import get_db
 
 from app.employees.schema import (
@@ -25,7 +28,26 @@ employee_router = APIRouter(
 )
 
 
+# ============================================================
+# GET MY EMPLOYEE PROFILE
+# Employee can access only their own profile
+# ============================================================
+
+@employee_router.get(
+    "/me",
+    response_model=EmployeeResponse
+)
+def get_my_employee_profile(
+    current_employee=Depends(get_current_employee)
+):
+    return current_employee
+
+
+# ============================================================
 # GET ALL EMPLOYEES
+# HR Manager / HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @employee_router.get(
     "/",
     response_model=list[EmployeeResponse]
@@ -44,7 +66,11 @@ def get_all_employees(
     return get_employees(db)
 
 
+# ============================================================
 # GET SINGLE EMPLOYEE
+# HR Manager / HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @employee_router.get(
     "/{employee_id}",
     response_model=EmployeeResponse
@@ -61,7 +87,10 @@ def get_single_employee(
         )
     )
 ):
-    employee = get_employee(db, employee_id)
+    employee = get_employee(
+        db,
+        employee_id
+    )
 
     if not employee:
         raise HTTPException(
@@ -72,7 +101,11 @@ def get_single_employee(
     return employee
 
 
+# ============================================================
 # CREATE EMPLOYEE
+# HR Manager / HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @employee_router.post(
     "/",
     response_model=EmployeeResponse,
@@ -84,6 +117,8 @@ def create_new_employee(
     current_user=Depends(
         require_role(
             "HR Manager",
+            "HR Payroll User",
+            "HR Payroll Manager",
             "Admin"
         )
     )
@@ -101,7 +136,11 @@ def create_new_employee(
         )
 
 
+# ============================================================
 # UPDATE EMPLOYEE
+# HR Manager / HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @employee_router.put(
     "/{employee_id}",
     response_model=EmployeeResponse
@@ -113,11 +152,16 @@ def update_existing_employee(
     current_user=Depends(
         require_role(
             "HR Manager",
+            "HR Payroll User",
+            "HR Payroll Manager",
             "Admin"
         )
     )
 ):
-    employee = get_employee(db, employee_id)
+    employee = get_employee(
+        db,
+        employee_id
+    )
 
     if not employee:
         raise HTTPException(
@@ -139,7 +183,11 @@ def update_existing_employee(
         )
 
 
+# ============================================================
 # DELETE / DEACTIVATE EMPLOYEE
+# HR Manager / HR Payroll User / HR Payroll Manager / Admin
+# ============================================================
+
 @employee_router.delete(
     "/{employee_id}",
     response_model=EmployeeResponse
@@ -150,11 +198,16 @@ def delete_existing_employee(
     current_user=Depends(
         require_role(
             "HR Manager",
+            "HR Payroll User",
+            "HR Payroll Manager",
             "Admin"
         )
     )
 ):
-    employee = get_employee(db, employee_id)
+    employee = get_employee(
+        db,
+        employee_id
+    )
 
     if not employee:
         raise HTTPException(

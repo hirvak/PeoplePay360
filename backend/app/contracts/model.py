@@ -5,6 +5,7 @@ from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+from app.salary.structure_model import SalaryStructure
 
 
 class Contract(Base):
@@ -39,6 +40,12 @@ class Contract(Base):
     schedule_id: Mapped[int | None] = mapped_column(
         ForeignKey("schedules.id"),
         nullable=True
+    )
+
+    salary_structure_id: Mapped[int | None] = mapped_column(
+        ForeignKey("salary_structures.id"),
+        nullable=True,
+        index=True
     )
 
     job_position: Mapped[str] = mapped_column(
@@ -81,3 +88,5 @@ class Contract(Base):
     department = relationship("Department")
 
     schedule = relationship("Schedule")
+
+    salary_structure = relationship("SalaryStructure")

@@ -6,7 +6,7 @@ from app.contracts.model import Contract
 from app.contracts.schema import ContractCreate, ContractUpdate
 from app.employees.model import Employee
 from app.schedules.model import Schedule
-
+from app.salary.structure_model import SalaryStructure
 
 def validate_contract_dates(
     start_date: date,
@@ -35,6 +35,7 @@ def check_contract_overlap(
     )
 
     for contract in contracts:
+
         if (
             exclude_contract_id is not None
             and contract.id == exclude_contract_id
@@ -83,6 +84,29 @@ def validate_schedule(
         )
 
 
+def validate_salary_structure(
+    db: Session,
+    salary_structure_id: int | None
+):
+    if salary_structure_id is None:
+        return
+
+    salary_structure = (
+        db.query(SalaryStructure)
+        .filter(
+            SalaryStructure.id == salary_structure_id,
+            SalaryStructure.is_active.is_(True)
+        )
+        .first()
+    )
+
+    if not salary_structure:
+        raise ValueError(
+            "Active Salary Structure not found"
+        )
+
+
+
 def create_contract(
     db: Session,
     contract_data: ContractCreate
@@ -117,12 +141,18 @@ def create_contract(
         schedule_id=contract_data.schedule_id
     )
 
+    validate_salary_structure(
+        db=db,
+        salary_structure_id=contract_data.salary_structure_id
+    )
+
     contract = Contract(
         employee_id=contract_data.employee_id,
         start_date=contract_data.start_date,
         end_date=contract_data.end_date,
         department_id=contract_data.department_id,
         schedule_id=contract_data.schedule_id,
+        salary_structure_id=contract_data.salary_structure_id,
         job_position=contract_data.job_position,
         wage=contract_data.wage,
         status=contract_data.status,
@@ -189,13 +219,27 @@ def update_contract(
     )
 
     if "schedule_id" in update_data:
+
         validate_schedule(
             db=db,
             schedule_id=update_data["schedule_id"]
         )
 
+    if "salary_structure_id" in update_data:
+
+        validate_salary_structure(
+            db=db,
+            salary_structure_id=update_data[
+                "salary_structure_id"
+            ]
+        )
+
     for field, value in update_data.items():
-        setattr(contract, field, value)
+        setattr(
+            contract,
+            field,
+            value
+        )
 
     db.commit()
     db.refresh(contract)

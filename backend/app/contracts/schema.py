@@ -10,6 +10,7 @@ class ContractBase(BaseModel):
     end_date: date | None = None
     department_id: int | None = None
     schedule_id: int | None = None
+    salary_structure_id: int | None = None
     job_position: str
     wage: Decimal
     status: str = "Active"
@@ -24,6 +25,7 @@ class ContractUpdate(BaseModel):
     end_date: date | None = None
     department_id: int | None = None
     schedule_id: int | None = None
+    salary_structure_id: int | None = None
     job_position: str | None = None
     wage: Decimal | None = None
     status: str | None = None

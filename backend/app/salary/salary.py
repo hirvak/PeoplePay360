@@ -183,8 +183,8 @@ def create_salary_rule(
     )
 
     existing_code = db.query(SalaryRule).filter(
-        SalaryRule.salary_structure_id ==
-        rule_data.salary_structure_id,
+        SalaryRule.salary_structure_id
+        == rule_data.salary_structure_id,
         SalaryRule.code == rule_data.code
     ).first()
 
@@ -194,8 +194,8 @@ def create_salary_rule(
         )
 
     existing_sequence = db.query(SalaryRule).filter(
-        SalaryRule.salary_structure_id ==
-        rule_data.salary_structure_id,
+        SalaryRule.salary_structure_id
+        == rule_data.salary_structure_id,
         SalaryRule.sequence == rule_data.sequence,
         SalaryRule.is_active.is_(True)
     ).first()
@@ -283,8 +283,8 @@ def update_salary_rule(
 
     if "code" in update_data:
         existing_code = db.query(SalaryRule).filter(
-            SalaryRule.salary_structure_id ==
-            salary_rule.salary_structure_id,
+            SalaryRule.salary_structure_id
+            == salary_rule.salary_structure_id,
             SalaryRule.code == update_data["code"],
             SalaryRule.id != salary_rule.id
         ).first()
@@ -296,8 +296,8 @@ def update_salary_rule(
 
     if "sequence" in update_data:
         existing_sequence = db.query(SalaryRule).filter(
-            SalaryRule.salary_structure_id ==
-            salary_rule.salary_structure_id,
+            SalaryRule.salary_structure_id
+            == salary_rule.salary_structure_id,
             SalaryRule.sequence == update_data["sequence"],
             SalaryRule.id != salary_rule.id,
             SalaryRule.is_active.is_(True)

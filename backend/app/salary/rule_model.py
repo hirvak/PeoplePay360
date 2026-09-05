@@ -50,6 +50,16 @@ class SalaryRule(Base):
         nullable=False
     )
 
+    category: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False
+    )
+
+    base_code: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True
+    )
+
     amount: Mapped[Decimal | None] = mapped_column(
         Numeric(12, 2),
         nullable=True

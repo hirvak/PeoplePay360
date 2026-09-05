@@ -13,10 +13,6 @@ from app.salary.rule_schema import (
 )
 
 
-# ============================================================
-# SALARY STRUCTURE
-# ============================================================
-
 def create_salary_structure(
     db: Session,
     structure_data: SalaryStructureCreate
@@ -123,15 +119,13 @@ def delete_salary_structure(
     return salary_structure
 
 
-# ============================================================
-# SALARY RULE
-# ============================================================
-
 def validate_salary_rule(
     rule_type: str,
+    category: str,
     amount,
     percentage,
-    formula
+    formula,
+    base_code: str | None
 ):
     if rule_type not in {
         "Fixed",
@@ -140,6 +134,14 @@ def validate_salary_rule(
     }:
         raise ValueError(
             "Rule type must be Fixed, Percentage, or Formula"
+        )
+
+    if category not in {
+        "EARNING",
+        "DEDUCTION"
+    }:
+        raise ValueError(
+            "Category must be EARNING or DEDUCTION"
         )
 
     if rule_type == "Fixed":
@@ -152,6 +154,11 @@ def validate_salary_rule(
         if percentage is None:
             raise ValueError(
                 "Percentage is required for Percentage salary rule"
+            )
+
+        if not base_code or not base_code.strip():
+            raise ValueError(
+                "Base code is required for Percentage salary rule"
             )
 
     if rule_type == "Formula":
@@ -177,9 +184,11 @@ def create_salary_rule(
 
     validate_salary_rule(
         rule_type=rule_data.rule_type,
+        category=rule_data.category,
         amount=rule_data.amount,
         percentage=rule_data.percentage,
-        formula=rule_data.formula
+        formula=rule_data.formula,
+        base_code=rule_data.base_code
     )
 
     existing_code = db.query(SalaryRule).filter(
@@ -211,6 +220,8 @@ def create_salary_rule(
         code=rule_data.code,
         sequence=rule_data.sequence,
         rule_type=rule_data.rule_type,
+        category=rule_data.category,
+        base_code=rule_data.base_code,
         amount=rule_data.amount,
         percentage=rule_data.percentage,
         formula=rule_data.formula,
@@ -259,6 +270,16 @@ def update_salary_rule(
         salary_rule.rule_type
     )
 
+    new_category = update_data.get(
+        "category",
+        salary_rule.category
+    )
+
+    new_base_code = update_data.get(
+        "base_code",
+        salary_rule.base_code
+    )
+
     new_amount = update_data.get(
         "amount",
         salary_rule.amount
@@ -276,9 +297,11 @@ def update_salary_rule(
 
     validate_salary_rule(
         rule_type=new_rule_type,
+        category=new_category,
         amount=new_amount,
         percentage=new_percentage,
-        formula=new_formula
+        formula=new_formula,
+        base_code=new_base_code
     )
 
     if "code" in update_data:

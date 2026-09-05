@@ -9,13 +9,21 @@ class SalaryRuleBase(BaseModel):
     name: str
     code: str
     sequence: int = Field(gt=0)
+
     rule_type: str
+
+    category: str
+
+    base_code: str | None = None
+
     amount: Decimal | None = None
+
     percentage: Decimal | None = Field(
         default=None,
         ge=0,
         le=100
     )
+
     formula: str | None = None
 
 
@@ -26,15 +34,27 @@ class SalaryRuleCreate(SalaryRuleBase):
 class SalaryRuleUpdate(BaseModel):
     name: str | None = None
     code: str | None = None
-    sequence: int | None = Field(default=None, gt=0)
+    sequence: int | None = Field(
+        default=None,
+        gt=0
+    )
+
     rule_type: str | None = None
+
+    category: str | None = None
+
+    base_code: str | None = None
+
     amount: Decimal | None = None
+
     percentage: Decimal | None = Field(
         default=None,
         ge=0,
         le=100
     )
+
     formula: str | None = None
+
     is_active: bool | None = None
 
 
@@ -44,4 +64,6 @@ class SalaryRuleResponse(SalaryRuleBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True
+    )

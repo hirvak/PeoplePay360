@@ -16,7 +16,9 @@ from app.payroll.payslip_service import (
     cancel_payslip,
 )
 
+from fastapi.responses import StreamingResponse
 
+from app.payroll.payslip_pdf_service import generate_payslip_pdf
 payslip_router = APIRouter(
     prefix="/payslips",
     tags=["Payslips"]
@@ -128,6 +130,42 @@ def cancel_existing_payslip(
         return cancel_payslip(
             db,
             payslip
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
+@payslip_router.get(
+    "/{payslip_id}/pdf"
+)
+def download_payslip_pdf(
+    payslip_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_role(
+            "HR Payroll User",
+            "HR Payroll Manager",
+            "Admin"
+        )
+    )
+):
+    try:
+        pdf_file = generate_payslip_pdf(
+            db,
+            payslip_id
+        )
+
+        return StreamingResponse(
+            pdf_file,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition":
+                    f"attachment; filename=payslip_{payslip_id}.pdf"
+            }
         )
 
     except ValueError as e:

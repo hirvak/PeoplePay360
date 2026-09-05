@@ -18,8 +18,9 @@ from app.payroll.service import (
     finalize_payrun,
     cancel_payrun
 )
-
-
+from app.payroll.validation_service import validate_payrun
+from app.payroll.validation_schema import PayrunValidationResponse
+from app.payroll.service import mark_payrun_paid
 payrun_router = APIRouter(
     prefix="/payruns",
     tags=["Payruns"]
@@ -237,6 +238,73 @@ def finalize_existing_payrun(
             payrun
         )
 
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
+@payrun_router.post(
+    "/{payrun_id}/validate",
+    response_model=PayrunValidationResponse
+)
+def validate_existing_payrun(
+    payrun_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_role(
+            "HR Payroll Manager",
+            "Admin"
+        )
+    )
+):
+    payrun = get_payrun(
+        db,
+        payrun_id
+    )
+
+    if not payrun:
+        raise HTTPException(
+            status_code=404,
+            detail="Payrun not found"
+        )
+
+    return validate_payrun(
+        db,
+        payrun
+    )
+
+@payrun_router.post(
+    "/{payrun_id}/mark-paid",
+    response_model=PayrunResponse
+)
+def mark_payrun_as_paid(
+    payrun_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_role(
+            "HR Payroll Manager",
+            "Admin"
+        )
+    )
+):
+    payrun = get_payrun(
+        db,
+        payrun_id
+    )
+
+    if not payrun:
+        raise HTTPException(
+            status_code=404,
+            detail="Payrun not found"
+        )
+
+    try:
+        return mark_payrun_paid(
+            db,
+            payrun
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=400,

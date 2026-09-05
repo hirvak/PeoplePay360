@@ -669,3 +669,39 @@ def finalize_payrun(
     db.refresh(payrun)
 
     return payrun
+
+def mark_payrun_paid(db: Session, payrun: Payrun):
+    if payrun.status != "Finalized":
+        raise ValueError(
+            "Only Finalized payruns can be marked as Paid"
+        )
+
+    payslips = (
+        db.query(Payslip)
+        .filter(
+            Payslip.payrun_id == payrun.id,
+            Payslip.status != "Cancelled"
+        )
+        .all()
+    )
+
+    if not payslips:
+        raise ValueError(
+            "Cannot mark payrun as Paid because no payslips exist"
+        )
+
+    for payslip in payslips:
+        if payslip.status != "Finalized":
+            raise ValueError(
+                f"Payslip {payslip.id} is not Finalized"
+            )
+
+    for payslip in payslips:
+        payslip.status = "Paid"
+
+    payrun.status = "Paid"
+
+    db.commit()
+    db.refresh(payrun)
+
+    return payrun

@@ -15,6 +15,7 @@ import WorkingSchedulesPage from "../pages/WorkingSchedules/WorkingSchedulesPage
 
 import ContractsPage from "../pages/Contracts/ContractsPage";
 import AttendancePage from "../pages/Attendance/AttendancePage";
+import AttendanceDetails from "../pages/Attendance/AttendanceDetails";
 
 import TimeOffDashboardPage from "../pages/TimeOff/TimeOffDashboardPage";
 import TimeOffRequestsPage from "../pages/TimeOff/TimeOffRequestsPage";
@@ -30,48 +31,57 @@ import SalaryRulesPage from "../pages/SalaryRules/SalaryRulesPage";
 function AppRoutes() {
   return (
     <Routes>
+      {/* Public Unauthenticated Auth Routes */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+
+      {/* Redirect root to /dashboard */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-      {/* Main Layout Shell Wrapper */}
-      <Route element={<AppLayout />}>
-        {/* 1. Dashboard */}
-        <Route path="/dashboard" element={<DashboardPage />} />
+      {/* Protected Routes (Requires valid authentication session) */}
+      <Route element={<ProtectedRoute />}>
+        {/* Main Application Layout Shell */}
+        <Route element={<AppLayout />}>
+          {/* 1. Dashboard */}
+          <Route path="/dashboard" element={<DashboardPage />} />
 
-        {/* 2. Employees & Submenu Routes */}
-        <Route path="/employees" element={<EmployeesPage />} />
-        <Route path="/employees/contracts" element={<EmployeeContractsPage />} />
-        <Route path="/departments" element={<DepartmentsPage />} />
-        <Route path="/schedule" element={<WorkingSchedulesPage />} />
+          {/* 2. Employees & Submenu Routes */}
+          <Route path="/employees" element={<EmployeesPage />} />
+          <Route path="/employees/contracts" element={<EmployeeContractsPage />} />
+          <Route path="/departments" element={<DepartmentsPage />} />
+          <Route path="/schedule" element={<WorkingSchedulesPage />} />
 
-        {/* 3. Contracts */}
-        <Route path="/contracts" element={<ContractsPage />} />
+          {/* 3. Contracts */}
+          <Route path="/contracts" element={<ContractsPage />} />
 
-        {/* 4. Attendance */}
-        <Route path="/attendance" element={<AttendancePage />} />
+          {/* 4. Attendance */}
+          <Route path="/attendance" element={<AttendancePage />} />
+          <Route path="/attendance/:id" element={<AttendanceDetails />} />
 
-        {/* 5. Time Off Submenu Routes */}
-        <Route path="/time-off" element={<TimeOffDashboardPage />} />
-        <Route path="/time-off/requests" element={<TimeOffRequestsPage />} />
-        <Route path="/time-off/types" element={<TimeOffTypesPage />} />
-        <Route path="/time-off/allocations" element={<TimeOffAllocationsPage />} />
+          {/* 5. Time Off Submenu Routes */}
+          <Route path="/time-off" element={<TimeOffDashboardPage />} />
+          <Route path="/time-off/requests" element={<TimeOffRequestsPage />} />
+          <Route path="/time-off/types" element={<TimeOffTypesPage />} />
+          <Route path="/time-off/allocations" element={<TimeOffAllocationsPage />} />
 
-        {/* 6. Payroll Submenu Routes */}
-        <Route path="/payroll" element={<PayrollDashboardPage />} />
-        <Route path="/payroll/payruns" element={<PayRunsPage />} />
-        <Route path="/payslips" element={<PayslipsPage />} />
-        <Route path="/payroll/structures" element={<SalaryStructuresPage />} />
-        <Route path="/payroll/rules" element={<SalaryRulesPage />} />
+          {/* 6. Payroll Submenu Routes */}
+          <Route path="/payroll" element={<PayrollDashboardPage />} />
+          <Route path="/payroll/payruns" element={<PayRunsPage />} />
+          <Route path="/payslips" element={<PayslipsPage />} />
+          <Route path="/payroll/structures" element={<SalaryStructuresPage />} />
+          <Route path="/payroll/rules" element={<SalaryRulesPage />} />
 
-        {/* Wildcard 404 Route */}
-        <Route
-          path="*"
-          element={
-            <div className="space-y-4">
-              <h1 className="text-xl font-bold text-red-600">404 - Page Not Found</h1>
-              <p className="text-slate-600">The requested route does not exist.</p>
-            </div>
-          }
-        />
+          {/* Wildcard 404 Route */}
+          <Route
+            path="*"
+            element={
+              <div className="space-y-4">
+                <h1 className="text-xl font-bold text-red-600">404 - Page Not Found</h1>
+                <p className="text-slate-600">The requested route does not exist.</p>
+              </div>
+            }
+          />
+        </Route>
       </Route>
     </Routes>
   );

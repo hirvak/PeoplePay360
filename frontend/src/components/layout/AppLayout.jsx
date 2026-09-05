@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { AttendanceWidget } from "../attendance/AttendanceWidget";
+import { useAuth } from "../../context/AuthContext";
 import {
   Building2,
   ChevronDown,
@@ -14,14 +16,22 @@ import {
   DollarSign,
   LayoutDashboard,
   Check,
+  LogOut,
+  User,
 } from "lucide-react";
 
 export default function AppLayout() {
+  const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
   const dropdownRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   const pathname = location.pathname;
 
@@ -342,6 +352,8 @@ export default function AppLayout() {
 
           {/* Right Action Bar (Search, Notifications, Profile) */}
           <div className="flex items-center gap-2.5">
+            <AttendanceWidget />
+
             <button
               type="button"
               className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition shadow-xs"
@@ -361,14 +373,41 @@ export default function AppLayout() {
 
             <div className="h-5 w-px bg-slate-200 mx-1" />
 
-            <div className="flex items-center gap-2.5 rounded-md p-1 hover:bg-slate-100 transition cursor-pointer">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-600 text-xs font-semibold text-white">
-                HR
-              </div>
-              <div className="hidden sm:flex flex-col text-left leading-none">
-                <span className="text-xs font-bold text-slate-800">Alex Morgan</span>
-                <span className="text-[10px] text-slate-500 font-medium">HR Administrator</span>
-              </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => toggleDropdown("user_profile")}
+                className="flex items-center gap-2 rounded-md p-1 hover:bg-slate-100 transition cursor-pointer"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-600 text-xs font-semibold text-white shadow-2xs">
+                  {user?.email ? user.email[0].toUpperCase() : "HR"}
+                </div>
+                <div className="hidden sm:flex flex-col text-left leading-none">
+                  <span className="text-xs font-bold text-slate-800 truncate max-w-[120px]">
+                    {user?.email ? user.email.split("@")[0] : "Alex Morgan"}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium capitalize">
+                    {user?.role || "HR Administrator"}
+                  </span>
+                </div>
+                <ChevronDown className="h-3 w-3 text-slate-400 hidden sm:block" />
+              </button>
+
+              {openDropdown === "user_profile" && (
+                <div className="absolute right-0 mt-1.5 w-52 rounded-md border border-slate-200 bg-white py-1 shadow-lg ring-1 ring-black/5 z-50">
+                  <div className="px-4 py-2 border-b border-slate-100">
+                    <span className="font-bold text-xs text-slate-900 block truncate">{user?.email || "User"}</span>
+                    <span className="text-[10px] text-purple-700 font-semibold uppercase tracking-wider">{user?.role || "Admin"}</span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Mobile Menu Toggle */}

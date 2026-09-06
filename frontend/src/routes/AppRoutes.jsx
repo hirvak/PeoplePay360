@@ -1,8 +1,11 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import ProtectedRoute from "./ProtectedRoute";
+import { useAuth } from "../context/AuthContext";
 
-// Auth Pages
+// Public & Auth Pages
+import LandingPage from "../pages/Landing/LandingPage";
 import LoginPage from "../pages/Auth/LoginPage";
 import RegisterPage from "../pages/Auth/RegisterPage";
 
@@ -102,11 +105,12 @@ function AppRoutes() {
             <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/employees/:id" element={<EmployeeDetailPage />} />
             <Route path="/employees/contracts" element={<EmployeeContractsPage />} />
+            <Route path="/employees/:employeeId/contracts" element={<EmployeeContractsPage />} />
             <Route path="/employees/departments" element={<DepartmentsPage />} />
             <Route path="/departments" element={<DepartmentsPage />} />
             <Route path="/employees/working-schedules" element={<WorkingSchedulesPage />} />
             <Route path="/schedule" element={<WorkingSchedulesPage />} />
-            <Route path="/contracts" element={<ContractsPage />} />
+            <Route path="/contracts" element={<EmployeeContractsPage />} />
             <Route path="/contracts/new" element={<CreateContractPage />} />
             <Route path="/time-off/types" element={<TimeOffTypesPage />} />
             <Route path="/time-off/types/new" element={<CreateTimeOffType />} />

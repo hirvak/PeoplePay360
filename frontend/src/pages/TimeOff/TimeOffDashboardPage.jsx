@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Calendar, Plus, Clock, CheckCircle2, XCircle, AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import { useTimeOffRequests, useTimeOffTypes, useEmployees } from "../../hooks/useTimeOff";
 import { useAuth } from "../../context/AuthContext";
+import { LeaveBalanceOverview } from "../../components/timeoff/LeaveBalanceOverview";
 
 export default function TimeOffDashboardPage() {
   const { user } = useAuth();
@@ -101,6 +102,9 @@ export default function TimeOffDashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Prominent Leave Balance Section */}
+      <LeaveBalanceOverview />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

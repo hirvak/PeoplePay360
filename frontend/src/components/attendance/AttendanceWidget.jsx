@@ -168,7 +168,7 @@ export function AttendanceWidget({ buttonVariant = "outline", buttonSize = "sm",
 
         setFeedback({
           type: "success",
-          message: `Checked in successfully for ${activeEmployeeName} at ${timeToSubmit.slice(0, 5)}!`,
+          message: "Checked in successfully.",
         });
       } else if (isCheckedIn) {
         // Perform CHECK OUT (PUT existing attendance record)
@@ -183,7 +183,7 @@ export function AttendanceWidget({ buttonVariant = "outline", buttonSize = "sm",
 
         setFeedback({
           type: "success",
-          message: `Checked out successfully for ${activeEmployeeName} at ${timeToSubmit.slice(0, 5)}!`,
+          message: "Checked out successfully.",
         });
       } else {
         // Record already completed, allow updating check-out
@@ -321,9 +321,11 @@ export function AttendanceWidget({ buttonVariant = "outline", buttonSize = "sm",
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Current Status</span>
               {isCheckedIn ? (
-                <Badge variant="success">Checked In</Badge>
+                <Badge variant="success">Currently Working</Badge>
               ) : isShiftCompleted ? (
-                <Badge variant="default">Completed Today</Badge>
+                <Badge variant="default" className="bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                  Completed Today
+                </Badge>
               ) : (
                 <Badge variant="secondary">Not Checked In</Badge>
               )}
@@ -339,7 +341,7 @@ export function AttendanceWidget({ buttonVariant = "outline", buttonSize = "sm",
               <div className="bg-white dark:bg-slate-900 p-2.5 rounded-md border border-slate-100 dark:border-slate-800 shadow-2xs">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Check Out Time</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
-                  {todayRecord?.check_out ? todayRecord.check_out.slice(0, 5) : "—"}
+                  {todayRecord?.check_out ? todayRecord.check_out.slice(0, 5) : "Not checked out"}
                 </span>
               </div>
             </div>
@@ -347,24 +349,26 @@ export function AttendanceWidget({ buttonVariant = "outline", buttonSize = "sm",
             {todayRecord && (
               <div className="text-xs text-slate-600 dark:text-slate-400 flex justify-between items-center pt-1 border-t border-slate-200/60 dark:border-slate-800">
                 <span>Total Worked Hours:</span>
-                <span className="font-bold text-purple-700 dark:text-purple-400">{todayRecord.worked_hours || 0} hrs</span>
+                <span className="font-bold text-purple-700 dark:text-purple-400">{(todayRecord.worked_hours || 0).toFixed(2)} hrs</span>
               </div>
             )}
           </div>
 
           {/* Time Input for Action */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Action Time (HH:MM)</label>
-            <Input
-              type="time"
-              value={customTime}
-              min={isCheckedIn && todayRecord?.check_in ? todayRecord.check_in.slice(0, 5) : undefined}
-              onChange={(e) => {
-                setCustomTime(e.target.value);
-                setFeedback({ type: null, message: "" });
-              }}
-            />
-          </div>
+          {!isShiftCompleted && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Action Time (HH:MM)</label>
+              <Input
+                type="time"
+                value={customTime}
+                min={isCheckedIn && todayRecord?.check_in ? todayRecord.check_in.slice(0, 5) : undefined}
+                onChange={(e) => {
+                  setCustomTime(e.target.value);
+                  setFeedback({ type: null, message: "" });
+                }}
+              />
+            </div>
+          )}
 
           {/* Feedback Display */}
           {feedback.type === "success" && (
@@ -385,32 +389,42 @@ export function AttendanceWidget({ buttonVariant = "outline", buttonSize = "sm",
             Close
           </Button>
 
-          <Button
-            onClick={handleAction}
-            disabled={
-              isLoadingAction ||
-              loadingAttendances ||
-              (isEmployee ? empLoading || empUnlinked || !myEmployee : employees.length === 0 || isEmpError)
-            }
-            className={isCheckedIn ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-purple-600 hover:bg-purple-700 text-white"}
-          >
-            {isLoadingAction ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                Processing...
-              </>
-            ) : isCheckedIn ? (
-              <>
-                <LogOut className="h-4 w-4 mr-1" />
-                Check Out
-              </>
-            ) : (
-              <>
-                <LogIn className="h-4 w-4 mr-1" />
-                Check In
-              </>
-            )}
-          </Button>
+          {isShiftCompleted ? (
+            <Button
+              disabled
+              className="bg-emerald-600 dark:bg-emerald-700 text-white opacity-90 cursor-default"
+            >
+              <CheckCircle className="h-4 w-4 mr-1" />
+              Completed Today
+            </Button>
+          ) : (
+            <Button
+              onClick={handleAction}
+              disabled={
+                isLoadingAction ||
+                loadingAttendances ||
+                (isEmployee ? empLoading || empUnlinked || !myEmployee : employees.length === 0 || isEmpError)
+              }
+              className={isCheckedIn ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-purple-600 hover:bg-purple-700 text-white"}
+            >
+              {isLoadingAction ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  Processing...
+                </>
+              ) : isCheckedIn ? (
+                <>
+                  <LogOut className="h-4 w-4 mr-1" />
+                  Check Out
+                </>
+              ) : (
+                <>
+                  <LogIn className="h-4 w-4 mr-1" />
+                  Check In
+                </>
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </Dialog>
     </>

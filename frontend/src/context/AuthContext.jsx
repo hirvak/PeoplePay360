@@ -31,8 +31,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (credentials) => {
+    const rawEmail = credentials.email || credentials.username || "";
     const loginData = {
-      email: credentials.email || credentials.username,
+      email: rawEmail.trim().toLowerCase(),
       password: credentials.password,
     };
     await authService.login(loginData);

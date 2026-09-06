@@ -30,24 +30,33 @@ export default function CreateTimeOffRequest() {
     async function loadOptions() {
       setLoadingData(true);
       try {
+        const typesData = await timeOffService.getTypes().catch(() => []);
+        const activeTypes = (typesData || []).filter((t) => t.is_active !== false);
+
         if (isEmployee) {
           const balData = await timeOffService.getMyBalance().catch(() => []);
-          const availableTypes = (balData || []).map((b) => ({
-            id: b.leave_type_id,
-            name: b.leave_type_name || b.leave_type?.name || (b.leave_type_id ? `Leave Type #${b.leave_type_id}` : "N/A"),
+          const balMap = new Map();
+          (balData || []).forEach((b) => {
+            if (b.leave_type_id) {
+              balMap.set(b.leave_type_id, b.remaining_amount);
+            }
+          });
+
+          const combined = activeTypes.map((t) => ({
+            ...t,
+            remaining_amount: balMap.get(t.id),
           }));
 
-          setLeaveTypes(availableTypes);
-          if (availableTypes.length > 0) {
-            setFormData((prev) => ({ ...prev, leave_type_id: String(availableTypes[0].id) }));
+          setLeaveTypes(combined);
+          if (combined.length > 0) {
+            setFormData((prev) => ({ ...prev, leave_type_id: String(combined[0].id) }));
           }
         } else {
-          const typesData = await timeOffService.getTypes().catch(() => []);
           const empData = await employeeService.getAll().catch(() => []);
-          setLeaveTypes(typesData || []);
+          setLeaveTypes(activeTypes);
           setEmployees(empData || []);
-          if (typesData && typesData.length > 0) {
-            setFormData((prev) => ({ ...prev, leave_type_id: String(typesData[0].id) }));
+          if (activeTypes.length > 0) {
+            setFormData((prev) => ({ ...prev, leave_type_id: String(activeTypes[0].id) }));
           }
         }
       } catch (err) {
@@ -59,6 +68,10 @@ export default function CreateTimeOffRequest() {
     loadOptions();
   }, [isEmployee]);
 
+  const selectedLeaveType = useMemo(() => {
+    return leaveTypes.find((t) => String(t.id) === String(formData.leave_type_id));
+  }, [leaveTypes, formData.leave_type_id]);
+
   const durationDays = useMemo(() => {
     if (!formData.start_date || !formData.end_date) return 0;
     const start = new Date(formData.start_date);
@@ -67,6 +80,16 @@ export default function CreateTimeOffRequest() {
     const diffTime = Math.abs(end - start);
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   }, [formData.start_date, formData.end_date]);
+
+  const durationText = useMemo(() => {
+    if (durationDays <= 0) return "—";
+    const unit = selectedLeaveType?.unit || "Days";
+    if (unit === "Hours") {
+      const hours = durationDays * 8;
+      return `${hours} Hours (${durationDays} Day${durationDays > 1 ? "s" : ""})`;
+    }
+    return `${durationDays} Day${durationDays > 1 ? "s" : ""}`;
+  }, [durationDays, selectedLeaveType]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -92,12 +115,15 @@ export default function CreateTimeOffRequest() {
 
     setIsSubmitting(true);
     try {
+      const unit = selectedLeaveType?.unit || "Days";
+      const requested_amount = unit === "Hours" ? durationDays * 8 : durationDays;
+
       const payload = {
         leave_type_id: parseInt(formData.leave_type_id, 10),
         start_date: formData.start_date,
         end_date: formData.end_date,
         reason: formData.reason || undefined,
-        requested_amount: durationDays > 0 ? durationDays : 1,
+        requested_amount: requested_amount > 0 ? requested_amount : 1,
       };
 
       if (!isEmployee) {
@@ -114,6 +140,9 @@ export default function CreateTimeOffRequest() {
       }
 
       await queryClient.invalidateQueries({ queryKey: ["timeOffRequests"] });
+      await queryClient.invalidateQueries({ queryKey: ["myLeaveBalance"] });
+      await queryClient.invalidateQueries({ queryKey: ["myLeaveRequests"] });
+
       navigate(isEmployee ? "/time-off" : "/time-off/requests");
     } catch (err) {
       setErrorMsg(err?.response?.data?.detail || err.message || "Failed to create leave request.");
@@ -127,11 +156,11 @@ export default function CreateTimeOffRequest() {
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => navigate("/time-off/requests")}
+          onClick={() => navigate(isEmployee ? "/time-off" : "/time-off/requests")}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#211D20] px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to Requests</span>
+          <span>Back to {isEmployee ? "Time Off" : "Requests"}</span>
         </button>
       </div>
 
@@ -183,10 +212,12 @@ export default function CreateTimeOffRequest() {
             className="w-full rounded-lg border border-slate-300 dark:border-[#40383D] bg-white dark:bg-[#211D20] px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-purple-600 focus:outline-hidden [&>option]:bg-white [&>option]:dark:bg-[#211D20]"
             required
           >
-            <option value="">{loadingData ? "Loading types..." : "-- Select Time Off Type --"}</option>
+            <option value="">
+              {loadingData ? "Loading types..." : leaveTypes.length === 0 ? "No available leave types" : "-- Select Time Off Type --"}
+            </option>
             {leaveTypes.map((type) => (
               <option key={type.id} value={type.id}>
-                {type.name} {type.is_paid ? "(Paid)" : "(Unpaid)"}
+                {type.name} {type.is_paid ? "(Paid)" : "(Unpaid)"} {type.unit ? `[${type.unit}]` : ""} {type.remaining_amount != null ? `— ${type.remaining_amount} remaining` : ""}
               </option>
             ))}
           </select>
@@ -224,7 +255,7 @@ export default function CreateTimeOffRequest() {
             Duration:
           </span>
           <span className="text-sm font-bold text-purple-700 dark:text-purple-300">
-            {durationDays > 0 ? `${durationDays} Day${durationDays > 1 ? "s" : ""}` : "—"}
+            {durationText}
           </span>
         </div>
 
@@ -246,7 +277,7 @@ export default function CreateTimeOffRequest() {
         <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
           <button
             type="button"
-            onClick={() => navigate("/time-off/requests")}
+            onClick={() => navigate(isEmployee ? "/time-off" : "/time-off/requests")}
             className="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
           >
             Cancel

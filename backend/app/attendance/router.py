@@ -138,15 +138,6 @@ def create_new_attendance(
     try:
         # Employee can create attendance only for themselves
         if current_user.role.name == "Employee":
-            current_employee = (
-                db.query(Attendance)
-                .filter(
-                    Attendance.employee_id == attendance_data.employee_id
-                )
-                .first()
-            )
-
-            # Get the logged-in employee profile
             from app.employees.model import Employee
 
             employee = (
@@ -184,8 +175,8 @@ def create_new_attendance(
 
 # ============================================================
 # UPDATE ATTENDANCE
-# HR roles + Admin
-# Employee should not edit existing attendance
+# Employee can update ONLY their own attendance (e.g. check-out)
+# HR roles + Admin can update any attendance
 # ============================================================
 
 @attendance_router.put(
@@ -198,6 +189,7 @@ def update_existing_attendance(
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(
+            "Employee",
             "HR Manager",
             "HR Payroll User",
             "HR Payroll Manager",
@@ -215,6 +207,29 @@ def update_existing_attendance(
             status_code=404,
             detail="Attendance record not found"
         )
+
+    if current_user.role.name == "Employee":
+        from app.employees.model import Employee
+
+        employee = (
+            db.query(Employee)
+            .filter(
+                Employee.user_id == current_user.id
+            )
+            .first()
+        )
+
+        if not employee:
+            raise HTTPException(
+                status_code=404,
+                detail="Employee profile not linked to this user"
+            )
+
+        if attendance.employee_id != employee.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You can only update your own attendance"
+            )
 
     try:
         return update_attendance(

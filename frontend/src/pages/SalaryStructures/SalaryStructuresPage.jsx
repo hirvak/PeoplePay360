@@ -229,11 +229,19 @@ export default function SalaryStructuresPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <div className="inline-flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/payroll/structures/${struct.id}`)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
+                      title="View Details"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleOpenEditModal(struct)}
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
                       title="Edit Structure"
                     >
                       <Edit3 className="h-4 w-4" />
@@ -241,7 +249,7 @@ export default function SalaryStructuresPage() {
                     <button
                       type="button"
                       onClick={() => setDeletingStructId(struct.id)}
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
                       title="Delete Structure"
                     >
                       <Trash2 className="h-4 w-4" />

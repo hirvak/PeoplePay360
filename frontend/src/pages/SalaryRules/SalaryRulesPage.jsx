@@ -297,11 +297,11 @@ export default function SalaryRulesPage() {
                   </td>
 
                   <td className="px-5 py-4 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="inline-flex items-center justify-end gap-1 shrink-0">
                       <button
                         type="button"
                         onClick={() => navigate(`/payroll/rules/${rule.id}`, { state: { rule } })}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
                         title="View / Edit Rule Details"
                       >
                         <Eye className="h-4 w-4" />
@@ -309,7 +309,7 @@ export default function SalaryRulesPage() {
                       <button
                         type="button"
                         onClick={() => handleOpenEditModal(rule)}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
                         title="Edit Rule"
                       >
                         <Edit3 className="h-4 w-4" />
@@ -317,7 +317,7 @@ export default function SalaryRulesPage() {
                       <button
                         type="button"
                         onClick={() => setDeletingRuleId(rule.id)}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
                         title="Delete Rule"
                       >
                         <Trash2 className="h-4 w-4" />

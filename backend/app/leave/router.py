@@ -150,7 +150,8 @@ def get_all_time_off_types(
             "HR Manager",
             "HR Payroll User",
             "HR Payroll Manager",
-            "Admin"
+            "Admin",
+            "Employee"
         )
     )
 ):
@@ -169,7 +170,8 @@ def get_single_time_off_type(
             "HR Manager",
             "HR Payroll User",
             "HR Payroll Manager",
-            "Admin"
+            "Admin",
+            "Employee"
         )
     )
 ):

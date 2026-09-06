@@ -314,28 +314,24 @@ export default function TimeOffTypesPage() {
                   </TableCell>
 
                   {/* Actions */}
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="inline-flex items-center justify-end gap-1 shrink-0">
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="sm"
                         onClick={() => navigate(`/time-off/types/${type.id}`)}
-                        className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
                         title="View Details"
                       >
                         <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
+                      </button>
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="sm"
                         onClick={() => navigate(`/time-off/types/${type.id}/edit`)}
-                        className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
                         title="Edit Type"
                       >
                         <Edit className="h-4 w-4" />
-                      </Button>
+                      </button>
                     </div>
                   </TableCell>
                 </TableRow>

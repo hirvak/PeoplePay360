@@ -18,6 +18,9 @@ import {
   ArrowUpRight,
   Loader2,
   BarChart3,
+  X,
+  RotateCcw,
+  Info,
 } from "lucide-react";
 import {
   BarChart,
@@ -27,6 +30,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  LabelList,
 } from "recharts";
 import dashboardService from "../../services/dashboardService";
 import payslipService from "../../services/payslipService";
@@ -40,12 +44,47 @@ import employeeService from "../../services/employeeService";
 function CustomBarTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
     const val = payload[0].value;
+    const fullLabel = payload[0].payload?.fullLabel || label;
     return (
-      <div className="rounded-lg border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-3 shadow-md text-xs">
-        <p className="font-bold text-slate-900 dark:text-white mb-1">{label}</p>
-        <p className="font-semibold text-purple-700 dark:text-purple-300">
-          Net Salary: ₹{Number(val).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+      <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-3.5 shadow-lg text-xs min-w-[180px]">
+        <p className="font-bold text-slate-900 dark:text-white mb-1.5 border-b border-slate-100 dark:border-slate-800 pb-1">
+          {fullLabel}
         </p>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-slate-500 dark:text-slate-400 font-medium">Net Salary:</span>
+          <span className="font-extrabold text-purple-700 dark:text-purple-300 font-mono">
+            ₹{Number(val).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
+// Custom Tooltip for Salary Cost by Department Horizontal Bar Chart
+function CustomDeptTooltip({ active, payload }) {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-3.5 shadow-lg text-xs min-w-[200px]">
+        <p className="font-bold text-slate-900 dark:text-white mb-1.5 border-b border-slate-100 dark:border-slate-800 pb-1">
+          {data.name}
+        </p>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-slate-500 dark:text-slate-400 font-medium">Headcount:</span>
+            <span className="font-bold text-slate-900 dark:text-white">
+              {data.headcount} {data.headcount === 1 ? "employee" : "employees"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-4 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+            <span className="text-slate-500 dark:text-slate-400 font-medium">Salary Cost:</span>
+            <span className="font-extrabold text-purple-700 dark:text-purple-300 font-mono">
+              ₹{Number(data.cost).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -67,6 +106,7 @@ export default function PayrollDashboardPage() {
   // Top Filter State
   const [periodFilter, setPeriodFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [departments, setDepartments] = useState([]);
 
   useEffect(() => {
@@ -142,12 +182,31 @@ export default function PayrollDashboardPage() {
     return list;
   }, [payslips, payruns]);
 
-  // Filtered Payslips based on selected Payroll Period & Department
+  // Dynamic list of available Payroll Status options derived from real backend records
+  const availableStatusOptions = useMemo(() => {
+    const statusSet = new Set(["Draft", "Calculated", "Validated", "Finalized", "Paid"]);
+    payruns.forEach((pr) => {
+      if (pr.status) statusSet.add(pr.status);
+    });
+    payslips.forEach((ps) => {
+      if (ps.status) statusSet.add(ps.status);
+    });
+    return Array.from(statusSet);
+  }, [payruns, payslips]);
+
+  // Filtered Payslips based on selected Scope Filters (Period, Dept, Status)
   const filteredPayslips = useMemo(() => {
     return payslips.filter((ps) => {
       if (ps.status === "Cancelled") return false;
 
-      // 1. Department Filter
+      // 1. Status Filter
+      if (statusFilter !== "all") {
+        if ((ps.status || "").toLowerCase() !== statusFilter.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 2. Department Filter
       if (departmentFilter !== "all") {
         const emp = employees.find((e) => e.id === ps.employee_id);
         const empDept = emp?.department_name || emp?.department?.name || "";
@@ -156,7 +215,7 @@ export default function PayrollDashboardPage() {
         }
       }
 
-      // 2. Period Filter
+      // 3. Period Filter
       if (periodFilter !== "all") {
         if (!ps.period_start) return false;
         const d = new Date(ps.period_start);
@@ -169,7 +228,7 @@ export default function PayrollDashboardPage() {
 
       return true;
     });
-  }, [payslips, periodFilter, departmentFilter, employees]);
+  }, [payslips, periodFilter, departmentFilter, statusFilter, employees]);
 
   // 1. Total Net Salary (Period + Dept Aware)
   const totalNetSalary = useMemo(() => {
@@ -401,8 +460,30 @@ export default function PayrollDashboardPage() {
       result = result.filter((d) => d.name.toLowerCase() === departmentFilter.toLowerCase());
     }
 
-    return result;
+    // Sort descending by cost (highest monthly salary cost first)
+    result.sort((a, b) => b.cost - a.cost);
+
+    return result.map((d) => ({
+      ...d,
+      displayName: `${d.name} (${d.headcount})`,
+    }));
   }, [departments, employees, filteredPayslips, departmentFilter]);
+
+  // Status Distribution Calculation for Part A of Status & Alerts card
+  const statusCounts = useMemo(() => {
+    const counts = { Draft: 0, Calculated: 0, Validated: 0, Finalized: 0, Paid: 0 };
+    payslips.forEach((ps) => {
+      const s = ps.status || "Draft";
+      if (counts[s] !== undefined) counts[s]++;
+      else if (s === "Approved") counts.Validated++;
+    });
+    payruns.forEach((pr) => {
+      const s = pr.status || "Draft";
+      if (counts[s] !== undefined) counts[s]++;
+    });
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    return { counts, total };
+  }, [payslips, payruns]);
 
   const warningCount = alerts.length;
 
@@ -435,12 +516,29 @@ export default function PayrollDashboardPage() {
 
       {/* Top Interactive Filter Bar */}
       <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-4 shadow-2xs">
-        <div className="flex items-center gap-2 mb-3 text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
-          <Filter className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-          <span>Interactive Payroll Scope Filters</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
+            <Filter className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <span>Interactive Payroll Analytics Filters</span>
+          </div>
+
+          {(periodFilter !== "all" || departmentFilter !== "all" || statusFilter !== "all") && (
+            <button
+              onClick={() => {
+                setPeriodFilter("all");
+                setDepartmentFilter("all");
+                setStatusFilter("all");
+              }}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-white transition px-2.5 py-1 rounded-md bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Reset Filters
+            </button>
+          )}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Period Filter */}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* 1. Payroll Period Filter */}
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Payroll Period</label>
             <select
@@ -457,7 +555,7 @@ export default function PayrollDashboardPage() {
             </select>
           </div>
 
-          {/* Department Filter */}
+          {/* 2. Department Filter */}
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Department</label>
             <select
@@ -469,6 +567,23 @@ export default function PayrollDashboardPage() {
               {departments.map((dept) => (
                 <option key={dept.id} value={dept.name}>
                   {dept.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 3. Payroll Status Filter */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Payroll Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 dark:border-[#40383D] bg-white dark:bg-[#211D20] px-3 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-100 focus:border-purple-600 focus:outline-hidden [&>option]:bg-white [&>option]:dark:bg-[#211D20]"
+            >
+              <option value="all">All Statuses</option>
+              {availableStatusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
                 </option>
               ))}
             </select>
@@ -542,10 +657,80 @@ export default function PayrollDashboardPage() {
         </div>
       </div>
 
-      {/* Main Grid: Monthly Net Salary Trend & Department Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* MAIN ANALYTICS ROW: 3-Column Desktop Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* 1. Monthly Net Salary Trend Bar Chart */}
+        {/* 1. Salary Cost by Department (Horizontal Bar Chart) */}
+        <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-5 shadow-2xs flex flex-col justify-between">
+          <div>
+            <div className="border-b border-slate-100 dark:border-slate-800 pb-3 mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Salary Cost by Department</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Source: Employee + Contract + Payslip totals
+                </p>
+              </div>
+              <Building2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            </div>
+
+            <div className="w-full pt-2" style={{ minHeight: "260px" }}>
+              {departmentTableData.length === 0 ? (
+                <div className="flex h-64 items-center justify-center text-xs text-slate-500 dark:text-slate-400 italic">
+                  No department salary data recorded for this selection.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(260, departmentTableData.length * 54)}>
+                  <BarChart
+                    layout="vertical"
+                    data={departmentTableData}
+                    margin={{ top: 10, right: 55, left: 10, bottom: 10 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-slate-200 dark:stroke-slate-800" />
+                    <XAxis
+                      type="number"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 11 }}
+                      stroke="#94A3B8"
+                      tickFormatter={(val) => `₹${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="displayName"
+                      tickLine={false}
+                      axisLine={false}
+                      width={150}
+                      tick={{ fontSize: 11, fontWeight: 600 }}
+                      stroke="#94A3B8"
+                    />
+                    <Tooltip content={<CustomDeptTooltip />} cursor={{ fill: "rgba(113, 75, 103, 0.08)" }} />
+                    <Bar
+                      dataKey="cost"
+                      radius={[0, 8, 8, 0]}
+                      maxBarSize={32}
+                      fill="#714B67"
+                      className="fill-[#714B67] dark:fill-[#A9789A]"
+                    >
+                      <LabelList
+                        dataKey="cost"
+                        position="right"
+                        formatter={(val) =>
+                          val > 0
+                            ? `₹${val >= 1000 ? `${(val / 1000).toFixed(1).replace(/\.0$/, "")}k` : val}`
+                            : "₹0"
+                        }
+                        style={{ fontSize: "11px", fontWeight: 700 }}
+                        className="fill-[#714B67] dark:fill-[#C495B6]"
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Monthly Net Salary Trend (Vertical Bar Chart) */}
         <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-5 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
@@ -569,7 +754,7 @@ export default function PayrollDashboardPage() {
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyChartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+                  <BarChart data={monthlyChartData} margin={{ top: 25, right: 15, left: 15, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200 dark:stroke-slate-800" />
                     <XAxis
                       dataKey="label"
@@ -589,11 +774,23 @@ export default function PayrollDashboardPage() {
                     <Tooltip content={<CustomBarTooltip />} cursor={{ fill: "rgba(113, 75, 103, 0.08)" }} />
                     <Bar
                       dataKey="amount"
-                      radius={[6, 6, 0, 0]}
-                      maxBarSize={48}
+                      radius={[8, 8, 0, 0]}
+                      maxBarSize={44}
                       fill="#714B67"
                       className="fill-[#714B67] dark:fill-[#A9789A]"
-                    />
+                    >
+                      <LabelList
+                        dataKey="amount"
+                        position="top"
+                        formatter={(val) =>
+                          val > 0
+                            ? `₹${val >= 1000 ? `${(val / 1000).toFixed(1).replace(/\.0$/, "")}k` : val}`
+                            : "₹0"
+                        }
+                        style={{ fontSize: "11px", fontWeight: 700 }}
+                        className="fill-[#714B67] dark:fill-[#C495B6]"
+                      />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -601,68 +798,210 @@ export default function PayrollDashboardPage() {
           </div>
         </div>
 
-        {/* 2. Department Overview Table */}
+        {/* 3. Payroll Status & Payroll Alerts Card */}
         <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-5 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="border-b border-slate-100 dark:border-slate-800 pb-3 mb-4 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">Department Overview</h3>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Payroll Status & Alerts</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Source: Employee + Contract + Payslip totals
+                  Source: Payruns + Payslip validation
                 </p>
               </div>
-              <Building2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <ShieldCheck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-                <thead className="bg-slate-50 dark:bg-slate-900/80 text-[11px] uppercase font-bold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th scope="col" className="px-4 py-3">Department</th>
-                    <th scope="col" className="px-4 py-3 text-center">Headcount</th>
-                    <th scope="col" className="px-4 py-3 text-right">Monthly Salary</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {departmentTableData.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="px-4 py-6 text-center text-xs text-slate-500 dark:text-slate-400 italic">
-                        No department salary data recorded for this selection.
-                      </td>
-                    </tr>
-                  ) : (
-                    departmentTableData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-purple-50/40 dark:hover:bg-purple-950/30 transition">
-                        <td className="px-4 py-3.5 font-bold text-slate-900 dark:text-white">
-                          {row.name}
-                        </td>
-                        <td className="px-4 py-3.5 text-center font-semibold text-slate-700 dark:text-slate-300">
-                          <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
-                            {row.headcount}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5 text-right font-extrabold text-purple-700 dark:text-purple-300 font-mono">
-                          ₹{Number(row.cost).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            {/* PART A — STATUS SPLIT */}
+            <div className="space-y-2.5 mb-5">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                <span>Status Breakdown</span>
+                <span className="text-purple-700 dark:text-purple-300 font-mono">{payslipsCount} Records</span>
+              </div>
+              
+              {/* Horizontal Visual Stacked Progress Bar */}
+              <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
+                <div style={{ width: `${statusCounts.total > 0 ? (statusCounts.counts.Paid / statusCounts.total) * 100 : 0}%` }} className="bg-emerald-500 h-full" title="Paid" />
+                <div style={{ width: `${statusCounts.total > 0 ? (statusCounts.counts.Validated / statusCounts.total) * 100 : 0}%` }} className="bg-indigo-500 h-full" title="Validated" />
+                <div style={{ width: `${statusCounts.total > 0 ? (statusCounts.counts.Calculated / statusCounts.total) * 100 : 0}%` }} className="bg-purple-500 h-full" title="Calculated" />
+                <div style={{ width: `${statusCounts.total > 0 ? (statusCounts.counts.Draft / statusCounts.total) * 100 : 0}%` }} className="bg-amber-500 h-full" title="Draft" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                <div className="flex items-center justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                  <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-medium"><span className="h-2 w-2 rounded-full bg-emerald-500" />Paid</span>
+                  <span className="font-bold text-slate-900 dark:text-white font-mono">{statusCounts.counts.Paid}</span>
+                </div>
+                <div className="flex items-center justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                  <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-medium"><span className="h-2 w-2 rounded-full bg-indigo-500" />Validated</span>
+                  <span className="font-bold text-slate-900 dark:text-white font-mono">{statusCounts.counts.Validated}</span>
+                </div>
+                <div className="flex items-center justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                  <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-medium"><span className="h-2 w-2 rounded-full bg-purple-500" />Calculated</span>
+                  <span className="font-bold text-slate-900 dark:text-white font-mono">{statusCounts.counts.Calculated}</span>
+                </div>
+                <div className="flex items-center justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                  <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-medium"><span className="h-2 w-2 rounded-full bg-amber-500" />Draft</span>
+                  <span className="font-bold text-slate-900 dark:text-white font-mono">{statusCounts.counts.Draft}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* PART B — CURRENT ALERTS SUMMARY */}
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Current Alerts ({alerts.length})</span>
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+              </div>
+              {alerts.length === 0 ? (
+                <p className="text-xs text-slate-500 dark:text-slate-400 italic">No active system warnings.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {alerts.slice(0, 3).map((alt, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-xs p-2 rounded-md bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{alt.title || alt.type}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-xs shrink-0 ${alt.severity === "error" ? "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300" : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300"}`}>
+                        {alt.severity || "warning"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
       </div>
 
-      {/* System Alerts & Module Integration Row */}
+      {/* OPERATIONAL INSIGHTS ROW: 3-Column Desktop Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* 1. Attendance Overview */}
+        <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-5 shadow-2xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Attendance Overview</h3>
+              </div>
+              <span className="text-xs font-mono font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-xs">
+                Timesheet Sync
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Present</span>
+                <span className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1 block">{attendanceMetrics.present}%</span>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Late Shifts</span>
+                <span className="text-xl font-extrabold text-amber-700 dark:text-amber-400 mt-1 block">{attendanceMetrics.late}%</span>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Overtime</span>
+                <span className="text-xl font-extrabold text-indigo-700 dark:text-indigo-400 mt-1 block">{attendanceMetrics.overtime} hrs</span>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Missing Out</span>
+                <span className="text-xl font-extrabold text-slate-700 dark:text-slate-200 mt-1 block">{attendanceMetrics.missing}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Time Off & Leave Balance */}
+        <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-5 shadow-2xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Time Off & Leave Balance</h3>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-xs">
+                Leave Sync
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Approved</span>
+                <span className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 block">{timeOffMetrics.paidLeave} d</span>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Pending</span>
+                <span className="text-xl font-extrabold text-amber-700 dark:text-amber-400 mt-1 block">{timeOffMetrics.pendingCount} d</span>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Rejected</span>
+                <span className="text-xl font-extrabold text-rose-700 dark:text-rose-400 mt-1 block">{timeOffMetrics.rejectedCount} d</span>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Remaining</span>
+                <span className="text-xl font-extrabold text-purple-700 dark:text-purple-400 mt-1 block">{timeOffMetrics.remaining} d</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Department Overview (Compact Organizational Summary) */}
+        <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-5 shadow-2xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Department Overview</h3>
+              </div>
+              <span className="text-xs font-mono font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-xs">
+                {departmentTableData.length} Depts
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {departmentTableData.length === 0 ? (
+                <p className="text-xs text-slate-500 dark:text-slate-400 italic">No department data recorded.</p>
+              ) : (
+                departmentTableData.slice(0, 3).map((d, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-white block">{d.name}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">{d.headcount} {d.headcount === 1 ? "employee" : "employees"}</span>
+                    </div>
+                    <span className="font-extrabold text-purple-700 dark:text-purple-300 font-mono">
+                      ₹{Number(d.cost).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Integrated Payroll Calculation Engine Informational Card */}
+      <div className="rounded-xl border border-purple-200 dark:border-purple-900/50 bg-gradient-to-r from-purple-50/80 to-white dark:from-purple-950/40 dark:to-[#211D20] p-5 shadow-2xs flex items-center gap-4">
+        <div className="rounded-lg bg-purple-600 p-3 text-white shrink-0 shadow-xs">
+          <Layers className="h-6 w-6" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">PeoplePay360 Integrated Payroll Calculation Engine</h3>
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+            The PeoplePay360 Payroll Engine dynamically aggregates contract terms, salary structures, salary rules, attendance, and approved time off to produce accurate, itemized payroll calculations.
+          </p>
+        </div>
+      </div>
+
+      {/* Detailed Payroll System Alerts Section */}
       <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-5 shadow-2xs">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">Payroll System Alerts</h3>
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Detailed Payroll System Alerts</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Real-time system compliance audit logs</p>
+          </div>
           <AlertTriangle className="h-5 w-5 text-amber-500" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs">
             <span className="font-semibold text-emerald-900 dark:text-emerald-300 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -680,101 +1019,28 @@ export default function PayrollDashboardPage() {
           </div>
         </div>
 
-        <div className="mt-4 space-y-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+        <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-4">
           <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Payroll Warnings List</h4>
           
           {alerts.length === 0 ? (
             <p className="text-xs text-slate-500 dark:text-slate-400 italic py-1">No active warnings. System running smoothly.</p>
           ) : (
-            alerts.slice(0, 3).map((alt, idx) => (
-              <div key={idx} className="text-xs p-2.5 rounded-md bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex items-start gap-2">
-                <span className={`h-2 w-2 rounded-full shrink-0 mt-1 ${alt.severity === "error" ? "bg-rose-500" : "bg-amber-500"}`} />
-                <div>
-                  <p className="font-semibold text-slate-900 dark:text-white">{alt.title || alt.type}</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">{alt.message}</p>
+            alerts.map((alt, idx) => (
+              <div key={idx} className="text-xs p-3 rounded-md bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex items-start gap-3">
+                <span className={`h-2.5 w-2.5 rounded-full shrink-0 mt-1 ${alt.severity === "error" ? "bg-rose-500" : "bg-amber-500"}`} />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-slate-900 dark:text-white">{alt.title || alt.type}</p>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-xs ${alt.severity === "error" ? "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300" : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300"}`}>
+                      {alt.severity || "warning"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{alt.message}</p>
                 </div>
               </div>
             ))
           )}
         </div>
-      </div>
-
-      {/* Attendance & Time Off Summaries Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Attendance Impact Overview */}
-        <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-5 shadow-2xs">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Attendance Payroll Impact</h3>
-            </div>
-            <span className="text-xs font-mono font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-xs">
-              Timesheet Sync
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Present</span>
-              <span className="text-lg font-bold text-emerald-700 dark:text-emerald-400 mt-1 block">{attendanceMetrics.present}%</span>
-            </div>
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Late Shifts</span>
-              <span className="text-lg font-bold text-amber-700 dark:text-amber-400 mt-1 block">{attendanceMetrics.late}%</span>
-            </div>
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Overtime</span>
-              <span className="text-lg font-bold text-indigo-700 dark:text-indigo-400 mt-1 block">{attendanceMetrics.overtime} hrs</span>
-            </div>
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Missing Out</span>
-              <span className="text-lg font-bold text-slate-700 dark:text-slate-200 mt-1 block">{attendanceMetrics.missing}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Time Off Payroll Overview */}
-        <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-5 shadow-2xs">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Time Off & Leave Balance</h3>
-            </div>
-            <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-xs">
-              Leave Sync
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Approved</span>
-              <span className="text-lg font-bold text-slate-900 dark:text-white mt-1 block">{timeOffMetrics.paidLeave} d</span>
-            </div>
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Pending</span>
-              <span className="text-lg font-bold text-amber-700 dark:text-amber-400 mt-1 block">{timeOffMetrics.pendingCount} d</span>
-            </div>
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Rejected</span>
-              <span className="text-lg font-bold text-rose-700 dark:text-rose-400 mt-1 block">{timeOffMetrics.rejectedCount} d</span>
-            </div>
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Est. Balance</span>
-              <span className="text-lg font-bold text-purple-700 dark:text-purple-400 mt-1 block">{timeOffMetrics.remaining} d</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Multi-Module Payroll Engine Integration Card */}
-      <div className="rounded-xl border border-purple-200 dark:border-purple-900/50 bg-purple-50/60 dark:bg-purple-950/40 p-5 shadow-2xs">
-        <div className="flex items-center gap-2 text-purple-900 dark:text-purple-200 font-bold text-sm mb-2">
-          <Layers className="h-5 w-5 text-purple-700 dark:text-purple-300" />
-          <span>PeoplePay360 Integrated Payroll Calculation Engine</span>
-        </div>
-        <p className="text-xs text-purple-800 dark:text-purple-300 leading-relaxed max-w-4xl">
-          The PeoplePay360 Payroll Engine dynamically aggregates contract terms from <strong className="font-semibold">Employees & Contracts</strong>, daily time tracking from <strong className="font-semibold">Attendance</strong>, leave approvals from <strong className="font-semibold">Time Off</strong>, and shift multipliers from <strong className="font-semibold">Working Schedules</strong> to compute accurate, itemized gross-to-net salary disbursements.
-        </p>
       </div>
       </>
       )}

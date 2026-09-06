@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import payslipService from "../../services/payslipService";
 import departmentService from "../../services/departmentService";
+import employeeService from "../../services/employeeService";
 import { useAuth } from "../../context/AuthContext";
 
 export default function PayslipsPage() {
@@ -26,6 +27,7 @@ export default function PayslipsPage() {
 
   const [payslips, setPayslips] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [employeesMap, setEmployeesMap] = useState(new Map());
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [periodFilter, setPeriodFilter] = useState("all");
@@ -36,16 +38,30 @@ export default function PayslipsPage() {
     try {
       setLoading(true);
       if (isEmployee) {
-        const slips = await payslipService.getMyPayslips().catch(() => []);
+        const [slips, myEmp] = await Promise.all([
+          payslipService.getMyPayslips().catch(() => []),
+          employeeService.getMe().catch(() => null),
+        ]);
         setPayslips(slips || []);
         setDepartments([]);
+        const map = new Map();
+        if (myEmp) {
+          map.set(myEmp.id, myEmp);
+        }
+        setEmployeesMap(map);
       } else {
-        const [slips, depts] = await Promise.all([
+        const [slips, depts, emps] = await Promise.all([
           payslipService.getAll().catch(() => []),
           departmentService.getAll().catch(() => []),
+          employeeService.getAll().catch(() => []),
         ]);
         setPayslips(slips || []);
         setDepartments(depts || []);
+        const map = new Map();
+        if (Array.isArray(emps)) {
+          emps.forEach((emp) => map.set(emp.id, emp));
+        }
+        setEmployeesMap(map);
       }
     } catch (err) {
       console.error("Failed to load payslips:", err);
@@ -57,6 +73,20 @@ export default function PayslipsPage() {
   useEffect(() => {
     fetchPayslipsAndDepts();
   }, [isEmployee]);
+
+  const availablePeriods = useMemo(() => {
+    const periodSet = new Set();
+    payslips.forEach((ps) => {
+      if (ps.period_start) {
+        const d = new Date(ps.period_start);
+        if (!isNaN(d.getTime())) {
+          periodSet.add(d.toLocaleString("en-US", { month: "long", year: "numeric" }));
+        }
+      }
+    });
+    ["February 2026", "January 2026", "December 2025"].forEach((p) => periodSet.add(p));
+    return Array.from(periodSet);
+  }, [payslips]);
 
   const handleDownloadPdf = async (id, e) => {
     e.stopPropagation();
@@ -73,20 +103,36 @@ export default function PayslipsPage() {
 
   const filteredPayslips = useMemo(() => {
     return payslips.filter((ps) => {
-      if (periodFilter !== "all" && ps.period !== periodFilter) return false;
-      if (departmentFilter !== "all" && ps.department !== departmentFilter) return false;
-      if (statusFilter !== "all" && ps.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
+      const emp = employeesMap.get(ps.employee_id);
+      const empName = emp ? `${emp.first_name || ""} ${emp.last_name || ""}`.trim() : (ps.employee_name || `Employee #${ps.employee_id}`);
+      const empCode = emp?.employee_code || ps.employee_code || `EMP-${ps.employee_id}`;
+      const deptName = emp?.department?.name || emp?.department_name || ps.department || "N/A";
+
+      if (periodFilter !== "all") {
+        const psPeriod = ps.period_start ? new Date(ps.period_start).toLocaleString("en-US", { month: "long", year: "numeric" }) : ps.period;
+        if (psPeriod !== periodFilter) return false;
+      }
+
+      if (departmentFilter !== "all" && deptName.toLowerCase() !== departmentFilter.toLowerCase()) {
+        return false;
+      }
+
+      if (statusFilter !== "all" && ps.status.toLowerCase() !== statusFilter.toLowerCase()) {
+        return false;
+      }
 
       if (!searchTerm.trim()) return true;
       const term = searchTerm.toLowerCase();
       return (
-        ps.employee_name.toLowerCase().includes(term) ||
-        ps.employee_code.toLowerCase().includes(term) ||
-        ps.payrun_name.toLowerCase().includes(term) ||
-        ps.id.toLowerCase().includes(term)
+        empName.toLowerCase().includes(term) ||
+        empCode.toLowerCase().includes(term) ||
+        deptName.toLowerCase().includes(term) ||
+        (ps.payrun_name && ps.payrun_name.toLowerCase().includes(term)) ||
+        String(ps.id).includes(term) ||
+        String(ps.payrun_id).includes(term)
       );
     });
-  }, [payslips, searchTerm, periodFilter, departmentFilter, statusFilter]);
+  }, [payslips, employeesMap, searchTerm, periodFilter, departmentFilter, statusFilter]);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -114,7 +160,7 @@ export default function PayslipsPage() {
       default:
         return (
           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-            Computed
+            {status || "Computed"}
           </span>
         );
     }
@@ -160,9 +206,11 @@ export default function PayslipsPage() {
             className="rounded-lg border border-slate-300 dark:border-[#40383D] bg-white dark:bg-[#211D20] px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:border-purple-600 focus:outline-hidden shadow-xs [&>option]:bg-white [&>option]:dark:bg-[#211D20]"
           >
             <option value="all">All Periods</option>
-            <option value="February 2026">February 2026</option>
-            <option value="January 2026">January 2026</option>
-            <option value="December 2025">December 2025</option>
+            {availablePeriods.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
           </select>
 
           {/* Department Filter */}
@@ -186,9 +234,11 @@ export default function PayslipsPage() {
             className="rounded-lg border border-slate-300 dark:border-[#40383D] bg-white dark:bg-[#211D20] px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:border-purple-600 focus:outline-hidden shadow-xs [&>option]:bg-white [&>option]:dark:bg-[#211D20]"
           >
             <option value="all">All Statuses</option>
+            <option value="draft">Draft</option>
+            <option value="calculated">Calculated</option>
             <option value="validated">Validated</option>
+            <option value="finalized">Finalized</option>
             <option value="paid">Paid</option>
-            <option value="warning">Warning</option>
           </select>
         </div>
       </div>
@@ -217,13 +267,16 @@ export default function PayslipsPage() {
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-[#40383D] bg-white dark:bg-[#211D20]">
               {filteredPayslips.map((ps) => {
-                const empName = ps.employee_name || `Employee #${ps.employee_id}`;
-                const empCode = ps.employee_code || `EMP-${ps.employee_id}`;
-                const dept = ps.department || "N/A";
+                const emp = employeesMap.get(ps.employee_id);
+                const empName = emp ? `${emp.first_name || ""} ${emp.last_name || ""}`.trim() : (ps.employee_name || `Employee #${ps.employee_id}`);
+                const empCode = emp?.employee_code || ps.employee_code || `EMP-${ps.employee_id}`;
+                const dept = emp?.department?.name || emp?.department_name || ps.department || "N/A";
                 const periodText = ps.period || (ps.period_start && ps.period_end ? `${ps.period_start} ~ ${ps.period_end}` : "N/A");
-                const basicVal = Number(ps.basic_salary || 0);
-                const grossVal = Number(ps.gross_salary || 0);
-                const netVal = Number(ps.net_salary || 0);
+                const basicVal = Number(ps.basic_wage ?? ps.basic_salary ?? 0);
+                const grossVal = Number(ps.gross_amount ?? ps.gross_salary ?? 0);
+                const netVal = Number(ps.net_amount ?? ps.net_salary ?? 0);
+                const workedDaysDisplay = ps.worked_days ? `${ps.worked_days} / ${ps.total_days || 22} d` : "Not specified";
+
                 return (
                 <tr
                   key={ps.id}
@@ -253,7 +306,7 @@ export default function PayslipsPage() {
                   </td>
 
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs font-mono">
-                    {ps.worked_days || 22} / {ps.total_days || 22} d
+                    {workedDaysDisplay}
                   </td>
 
                   <td className="px-6 py-4 text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap">
@@ -303,3 +356,4 @@ export default function PayslipsPage() {
     </div>
   );
 }
+

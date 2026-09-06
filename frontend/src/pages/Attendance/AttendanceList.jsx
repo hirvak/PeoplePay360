@@ -223,7 +223,7 @@ export default function AttendanceList() {
 
     if (newForm.check_in && newForm.check_out) {
       if (newForm.check_out <= newForm.check_in) {
-        setFormError("Check-out time must be after check-in time.");
+        setFormError("Check-out time cannot be earlier than check-in time.");
         return;
       }
     }

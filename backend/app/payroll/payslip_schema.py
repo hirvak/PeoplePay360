@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.payroll.payslip_line_schema import PayslipLineResponse
+
 
 class PayslipBase(BaseModel):
     payrun_id: int
@@ -30,6 +32,7 @@ class PayslipResponse(PayslipBase):
     status: str
     created_at: datetime
     updated_at: datetime
+    lines: list[PayslipLineResponse] = []
 
     model_config = ConfigDict(
         from_attributes=True

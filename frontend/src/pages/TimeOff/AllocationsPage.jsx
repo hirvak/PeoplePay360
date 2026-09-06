@@ -30,6 +30,7 @@ import {
   useEmployees,
 } from "@/hooks/useTimeOff";
 import CreateAllocationModal from "./CreateAllocationModal";
+import LeaveBalanceOverview from "@/components/timeoff/LeaveBalanceOverview";
 
 export default function AllocationsPage() {
   const navigate = useNavigate();
@@ -153,6 +154,9 @@ export default function AllocationsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Employee Self-Service Leave Balance Overview */}
+      <LeaveBalanceOverview />
 
       {/* Success Notification Banner */}
       {successBanner && (

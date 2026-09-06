@@ -107,14 +107,14 @@ export default function EmployeeList({ employees = [], onEdit, onDelete }) {
 
                   {/* Actions */}
                   <td className="px-6 py-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="inline-flex items-center justify-end gap-1 shrink-0">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/employees/${emp.id}`);
                         }}
-                        className="rounded-lg p-1.5 text-slate-500 hover:bg-purple-100 hover:text-purple-700 transition cursor-pointer"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
                         title="View Details"
                       >
                         <Eye className="h-4 w-4" />
@@ -127,7 +127,7 @@ export default function EmployeeList({ employees = [], onEdit, onDelete }) {
                             e.stopPropagation();
                             onEdit(emp);
                           }}
-                          className="rounded-lg p-1.5 text-slate-500 hover:bg-purple-100 hover:text-purple-700 transition cursor-pointer"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
                           title="Edit Employee"
                         >
                           <Edit3 className="h-4 w-4" />
@@ -141,7 +141,7 @@ export default function EmployeeList({ employees = [], onEdit, onDelete }) {
                             e.stopPropagation();
                             onDelete(emp);
                           }}
-                          className="rounded-lg p-1.5 text-slate-500 hover:bg-rose-100 hover:text-rose-600 transition cursor-pointer"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
                           title="Delete Employee"
                         >
                           <Trash2 className="h-4 w-4" />

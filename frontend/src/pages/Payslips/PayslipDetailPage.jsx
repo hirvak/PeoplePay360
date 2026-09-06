@@ -17,6 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import payslipService from "../../services/payslipService";
+import employeeService from "../../services/employeeService";
 import { useAuth } from "../../context/AuthContext";
 
 export default function PayslipDetailPage() {
@@ -27,6 +28,7 @@ export default function PayslipDetailPage() {
   const isEmployee = user?.role === "Employee";
 
   const [payslip, setPayslip] = useState(location.state?.payslip || null);
+  const [employee, setEmployee] = useState(null);
   const [loading, setLoading] = useState(!location.state?.payslip);
   const [toastMessage, setToastMessage] = useState("");
 
@@ -56,6 +58,15 @@ export default function PayslipDetailPage() {
       }
     }
   }, [id, payslip, isEmployee]);
+
+  useEffect(() => {
+    if (payslip?.employee_id) {
+      employeeService
+        .getById(payslip.employee_id)
+        .then((emp) => setEmployee(emp))
+        .catch(() => setEmployee(null));
+    }
+  }, [payslip?.employee_id]);
 
   const handlePrint = () => {
     window.print();
@@ -88,20 +99,46 @@ export default function PayslipDetailPage() {
     }
   };
 
-  const totalAllowances = useMemo(() => {
-    if (!payslip) return 0;
-    if (payslip.allowances && Array.isArray(payslip.allowances)) {
-      return payslip.allowances.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const earningsLines = useMemo(() => {
+    if (!payslip) return [];
+    if (payslip.lines && Array.isArray(payslip.lines)) {
+      return payslip.lines.filter((l) => l.category === "EARNING");
     }
-    return Number(payslip.allowances_total || 0);
+    if (payslip.allowances && Array.isArray(payslip.allowances)) {
+      return payslip.allowances;
+    }
+    return [];
   }, [payslip]);
 
-  const totalDeductions = useMemo(() => {
-    if (!payslip) return 0;
-    if (payslip.deductions && Array.isArray(payslip.deductions)) {
-      return payslip.deductions.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const deductionLines = useMemo(() => {
+    if (!payslip) return [];
+    if (payslip.lines && Array.isArray(payslip.lines)) {
+      return payslip.lines.filter((l) => l.category === "DEDUCTION");
     }
-    return Number(payslip.deductions_total || 0);
+    if (payslip.deductions && Array.isArray(payslip.deductions)) {
+      return payslip.deductions;
+    }
+    return [];
+  }, [payslip]);
+
+  const grossAmount = useMemo(() => {
+    if (!payslip) return 0;
+    return Number(payslip.gross_amount ?? payslip.gross_salary ?? 0);
+  }, [payslip]);
+
+  const deductionAmount = useMemo(() => {
+    if (!payslip) return 0;
+    return Number(payslip.deduction_amount ?? payslip.deductions_total ?? 0);
+  }, [payslip]);
+
+  const netAmount = useMemo(() => {
+    if (!payslip) return 0;
+    return Number(payslip.net_amount ?? payslip.net_salary ?? 0);
+  }, [payslip]);
+
+  const basicWage = useMemo(() => {
+    if (!payslip) return 0;
+    return Number(payslip.basic_wage ?? payslip.basic_salary ?? 0);
   }, [payslip]);
 
   if (loading) {
@@ -120,8 +157,10 @@ export default function PayslipDetailPage() {
     );
   }
 
-  const empName = payslip.employee_name || `Employee #${payslip.employee_id}`;
-  const empCode = payslip.employee_code || `EMP-${payslip.employee_id}`;
+  const empName = employee ? `${employee.first_name || ""} ${employee.last_name || ""}`.trim() : (payslip.employee_name || (payslip.employee ? `${payslip.employee.first_name || ""} ${payslip.employee.last_name || ""}`.trim() : `Employee #${payslip.employee_id}`));
+  const empCode = employee?.employee_code || payslip.employee_code || payslip.employee?.employee_code || `EMP-${payslip.employee_id}`;
+  const empDept = employee?.department?.name || employee?.department_name || payslip.department || payslip.employee?.department?.name || "N/A";
+  const empPosition = employee?.job_position || payslip.job_position || payslip.employee?.job_position || "N/A";
   const periodText = payslip.period || (payslip.period_start && payslip.period_end ? `${payslip.period_start} ~ ${payslip.period_end}` : "N/A");
 
   return (
@@ -221,20 +260,20 @@ export default function PayslipDetailPage() {
             <h3 className="font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 border-b border-purple-100 dark:border-purple-900/50 pb-1 mb-2">
               Employee Details
             </h3>
-            <p><strong className="text-slate-900 dark:text-white">Employee Name:</strong> <span className="text-slate-700 dark:text-slate-300">{payslip.employee_name}</span></p>
-            <p><strong className="text-slate-900 dark:text-white">Employee Code:</strong> <span className="text-slate-700 dark:text-slate-300">{payslip.employee_code}</span></p>
-            <p><strong className="text-slate-900 dark:text-white">Department:</strong> <span className="text-slate-700 dark:text-slate-300">{payslip.department}</span></p>
-            <p><strong className="text-slate-900 dark:text-white">Job Position:</strong> <span className="text-slate-700 dark:text-slate-300">{payslip.job_position}</span></p>
+            <p><strong className="text-slate-900 dark:text-white">Employee Name:</strong> <span className="text-slate-700 dark:text-slate-300">{empName}</span></p>
+            <p><strong className="text-slate-900 dark:text-white">Employee Code:</strong> <span className="text-slate-700 dark:text-slate-300">{empCode}</span></p>
+            <p><strong className="text-slate-900 dark:text-white">Department:</strong> <span className="text-slate-700 dark:text-slate-300">{empDept}</span></p>
+            <p><strong className="text-slate-900 dark:text-white">Job Position:</strong> <span className="text-slate-700 dark:text-slate-300">{empPosition}</span></p>
           </div>
 
           <div className="space-y-2">
             <h3 className="font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 border-b border-purple-100 dark:border-purple-900/50 pb-1 mb-2">
               Payment & Bank Information
             </h3>
-            <p><strong className="text-slate-900 dark:text-white">Pay Period:</strong> <span className="text-slate-700 dark:text-slate-300">{payslip.period}</span></p>
-            <p><strong className="text-slate-900 dark:text-white">Salary Structure:</strong> <span className="text-slate-700 dark:text-slate-300">{payslip.structure_name}</span></p>
-            <p><strong className="text-slate-900 dark:text-white">Bank Name:</strong> <span className="text-slate-700 dark:text-slate-300">{payslip.bank_name || "JPMorgan Chase Bank"}</span></p>
-            <p><strong className="text-slate-900 dark:text-white">Bank Account:</strong> <span className="text-slate-700 dark:text-slate-300">{payslip.bank_account || "US8937492810472910"}</span></p>
+            <p><strong className="text-slate-900 dark:text-white">Pay Period:</strong> <span className="text-slate-700 dark:text-slate-300">{periodText}</span></p>
+            <p><strong className="text-slate-900 dark:text-white">Salary Structure:</strong> <span className="text-slate-700 dark:text-slate-300">{payslip.structure_name || payslip.salary_structure?.name || `Structure #${payslip.salary_structure_id}`}</span></p>
+            <p><strong className="text-slate-900 dark:text-white">Bank Name:</strong> <span className="text-slate-700 dark:text-slate-300">{payslip.bank_name || "State Bank of India"}</span></p>
+            <p><strong className="text-slate-900 dark:text-white">Bank Account:</strong> <span className="text-slate-700 dark:text-slate-300">{payslip.bank_account || "SB-9876543210"}</span></p>
           </div>
         </div>
 
@@ -250,44 +289,29 @@ export default function PayslipDetailPage() {
 
             <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
               <tbody className="divide-y divide-slate-100 dark:divide-[#40383D]">
-                <tr>
-                  <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-white">Basic Monthly Salary</td>
-                  <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white text-right">
-                    ₹{(payslip.basic_salary || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </td>
-                </tr>
-
-                {payslip.allowances && Array.isArray(payslip.allowances) ? (
-                  payslip.allowances.map((item, idx) => (
+                {earningsLines.length > 0 ? (
+                  earningsLines.map((item, idx) => (
                     <tr key={idx}>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{item.name}</td>
-                      <td className="px-4 py-2.5 font-semibold text-emerald-700 dark:text-emerald-400 text-right">
-                        +₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-white">{item.name} ({item.code})</td>
+                      <td className="px-4 py-2.5 font-bold text-emerald-700 dark:text-emerald-400 text-right">
+                        +₹{Number(item.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))
                 ) : (
-                  <>
-                    <tr>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">House Rent Allowance (HRA)</td>
-                      <td className="px-4 py-2.5 font-semibold text-emerald-700 dark:text-emerald-400 text-right">+₹3,166.67</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">Transport Allowance</td>
-                      <td className="px-4 py-2.5 font-semibold text-emerald-700 dark:text-emerald-400 text-right">+₹350.00</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">Medical Allowance</td>
-                      <td className="px-4 py-2.5 font-semibold text-emerald-700 dark:text-emerald-400 text-right">+₹250.00</td>
-                    </tr>
-                  </>
+                  <tr>
+                    <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-white">Basic Monthly Salary</td>
+                    <td className="px-4 py-2.5 font-bold text-slate-900 dark:text-white text-right">
+                      ₹{basicWage.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
                 )}
               </tbody>
               <tfoot className="bg-emerald-50/50 dark:bg-emerald-950/20 font-bold border-t border-slate-200 dark:border-[#40383D]">
                 <tr>
                   <td className="px-4 py-2.5 text-slate-900 dark:text-white">Total Gross Earnings</td>
                   <td className="px-4 py-2.5 text-emerald-800 dark:text-emerald-300 text-right text-sm">
-                    ₹{(payslip.gross_salary || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    ₹{grossAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
               </tfoot>
@@ -303,33 +327,27 @@ export default function PayslipDetailPage() {
 
             <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
               <tbody className="divide-y divide-slate-100 dark:divide-[#40383D]">
-                {payslip.deductions && Array.isArray(payslip.deductions) ? (
-                  payslip.deductions.map((item, idx) => (
+                {deductionLines.length > 0 ? (
+                  deductionLines.map((item, idx) => (
                     <tr key={idx}>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{item.name}</td>
+                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{item.name} ({item.code})</td>
                       <td className="px-4 py-2.5 font-semibold text-rose-600 dark:text-rose-400 text-right">
-                        -₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        -₹{Number(item.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))
                 ) : (
-                  <>
-                    <tr>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">Professional Tax</td>
-                      <td className="px-4 py-2.5 font-semibold text-rose-600 dark:text-rose-400 text-right">-₹150.00</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">Federal & State Income Tax</td>
-                      <td className="px-4 py-2.5 font-semibold text-rose-600 dark:text-rose-400 text-right">-₹1,400.00</td>
-                    </tr>
-                  </>
+                  <tr>
+                    <td className="px-4 py-2.5 text-slate-500 italic">No deductions applied</td>
+                    <td className="px-4 py-2.5 text-right font-semibold text-slate-500">₹0.00</td>
+                  </tr>
                 )}
               </tbody>
               <tfoot className="bg-rose-50/50 dark:bg-rose-950/20 font-bold border-t border-slate-200 dark:border-[#40383D]">
                 <tr>
                   <td className="px-4 py-2.5 text-slate-900 dark:text-white">Total Deductions</td>
                   <td className="px-4 py-2.5 text-rose-800 dark:text-rose-300 text-right text-sm">
-                    -₹{totalDeductions.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    -₹{deductionAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
               </tfoot>
@@ -342,10 +360,10 @@ export default function PayslipDetailPage() {
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">Net Salary Payable</span>
             <p className="text-3xl font-extrabold text-purple-900 dark:text-purple-100 mt-1">
-              ₹{(payslip.net_salary || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              ₹{netAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
             </p>
             <p className="text-xs text-purple-700 dark:text-purple-300 mt-0.5 font-medium">
-              Gross Earnings (₹{payslip.gross_salary?.toLocaleString("en-IN")}) - Deductions (₹{totalDeductions.toLocaleString("en-IN")})
+              Gross Earnings (₹{grossAmount.toLocaleString("en-IN")}) - Deductions (₹{deductionAmount.toLocaleString("en-IN")})
             </p>
           </div>
 

@@ -70,6 +70,7 @@ class LeaveAllocationResponse(LeaveAllocationBase):
     used_amount: Decimal
     remaining_amount: Decimal
     status: str
+    leave_type: TimeOffTypeResponse | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -106,6 +107,7 @@ class LeaveRequestResponse(LeaveRequestBase):
     status: str
     approved_by: int | None
     approved_at: datetime | None
+    leave_type: TimeOffTypeResponse | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import {
   FileText,
   Plus,
@@ -17,13 +18,22 @@ import {
   X,
   Users,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import contractService from "../../services/contractService";
 import employeeService from "../../services/employeeService";
 
 export default function EmployeeContractsPage() {
+  const { employeeId: paramEmployeeId, id: routeId } = useParams();
+  const [searchParams] = useSearchParams();
+  const queryEmployeeId = searchParams.get("employee_id") || searchParams.get("employeeId");
+
+  // Determine active employee ID for employee-specific mode
+  const activeEmployeeId = paramEmployeeId || routeId || queryEmployeeId || null;
+
   const [contracts, setContracts] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [singleEmployee, setSingleEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -51,8 +61,26 @@ export default function EmployeeContractsPage() {
         contractService.getAll().catch(() => []),
         employeeService.getAll().catch(() => []),
       ]);
-      setContracts(Array.isArray(cntData) ? cntData : []);
-      setEmployees(Array.isArray(empData) ? empData : []);
+      const loadedContracts = Array.isArray(cntData) ? cntData : [];
+      const loadedEmployees = Array.isArray(empData) ? empData : [];
+      setContracts(loadedContracts);
+      setEmployees(loadedEmployees);
+
+      if (activeEmployeeId) {
+        const found = loadedEmployees.find((e) => String(e.id) === String(activeEmployeeId));
+        if (found) {
+          setSingleEmployee(found);
+        } else {
+          try {
+            const empDetail = await employeeService.getById(activeEmployeeId);
+            setSingleEmployee(empDetail);
+          } catch (e) {
+            console.error("Failed to fetch single employee detail:", e);
+          }
+        }
+      } else {
+        setSingleEmployee(null);
+      }
     } catch (err) {
       console.error("Failed to load contracts or employees:", err);
     } finally {
@@ -62,21 +90,42 @@ export default function EmployeeContractsPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeEmployeeId]);
 
   const employeeMap = useMemo(() => {
     const map = {};
     employees.forEach((emp) => {
       map[emp.id] = emp;
     });
+    if (singleEmployee) {
+      map[singleEmployee.id] = singleEmployee;
+    }
     return map;
-  }, [employees]);
+  }, [employees, singleEmployee]);
+
+  // Base contracts filtered by activeEmployeeId if present
+  const baseContracts = useMemo(() => {
+    if (!activeEmployeeId) return contracts;
+    return contracts.filter((c) => String(c.employee_id) === String(activeEmployeeId));
+  }, [contracts, activeEmployeeId]);
+
+  const selectedEmployee = singleEmployee || (activeEmployeeId ? employeeMap[activeEmployeeId] : null);
+  const selectedEmployeeName = selectedEmployee
+    ? `${selectedEmployee.first_name || ""} ${selectedEmployee.last_name || ""}`.trim() || selectedEmployee.name
+    : activeEmployeeId
+    ? `Employee #${activeEmployeeId}`
+    : null;
+
+  const selectedEmployeeCode = selectedEmployee?.employee_code || (activeEmployeeId ? `EMP-${activeEmployeeId}` : "");
 
   const handleOpenCreateModal = () => {
     setEditingContract(null);
+    const defaultEmpId = activeEmployeeId || (employees.length > 0 ? employees[0].id : "");
+    const targetEmp = employees.find((e) => String(e.id) === String(defaultEmpId)) || selectedEmployee;
+
     setFormData({
-      employee_id: employees.length > 0 ? employees[0].id : "",
-      job_position: "Software Developer",
+      employee_id: defaultEmpId,
+      job_position: targetEmp?.job_position || "Software Developer",
       wage: "80000",
       start_date: new Date().toISOString().split("T")[0],
       end_date: "",
@@ -134,27 +183,35 @@ export default function EmployeeContractsPage() {
     }
   };
 
-  // Filtered Contracts
+  // Filtered Contracts (Search & Status Filter applied on baseContracts)
   const filteredContracts = useMemo(() => {
-    return contracts.filter((c) => {
-      if (statusFilter === "active" && c.status !== "Active") return false;
+    return baseContracts.filter((c) => {
+      if (statusFilter === "active" && c.status !== "Active" && !c.is_active) return false;
       if (statusFilter === "expiring" && c.status !== "Expiring") return false;
       if (statusFilter === "expired" && c.status !== "Expired") return false;
 
       if (!searchTerm.trim()) return true;
       const term = searchTerm.toLowerCase();
-      const emp = employeeMap[c.employee_id];
-      const empName = emp ? `${emp.first_name} ${emp.last_name}` : "";
+      const emp = employeeMap[c.employee_id] || selectedEmployee;
+      const empName = emp ? `${emp.first_name || ""} ${emp.last_name || ""}`.trim() : "";
+      const empCode = emp?.employee_code || "";
+      const pos = c.job_position || "";
+      const statusStr = c.status || "";
+
       return (
-        (c.job_position && c.job_position.toLowerCase().includes(term)) ||
+        pos.toLowerCase().includes(term) ||
         empName.toLowerCase().includes(term) ||
-        (c.status && c.status.toLowerCase().includes(term))
+        empCode.toLowerCase().includes(term) ||
+        statusStr.toLowerCase().includes(term)
       );
     });
-  }, [contracts, searchTerm, statusFilter, employeeMap]);
+  }, [baseContracts, searchTerm, statusFilter, employeeMap, selectedEmployee]);
 
-  const activeCount = contracts.filter((c) => c.status === "Active" || c.is_active).length;
-  const expiringCount = contracts.filter((c) => c.status === "Expiring").length;
+  const activeCount = baseContracts.filter((c) => c.status === "Active" || c.is_active).length;
+  const expiringCount = baseContracts.filter((c) => c.status === "Expiring").length;
+  const avgWage = baseContracts.length > 0
+    ? Math.round(baseContracts.reduce((acc, c) => acc + Number(c.wage || 0), 0) / baseContracts.length)
+    : 0;
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -193,14 +250,44 @@ export default function EmployeeContractsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-[#40383D] pb-5">
         <div>
+          {activeEmployeeId && (
+            <div className="flex items-center gap-2 mb-2">
+              <Link
+                to={`/employees/${activeEmployeeId}`}
+                className="inline-flex items-center text-xs font-semibold text-purple-700 dark:text-purple-400 hover:text-purple-900 transition-colors"
+              >
+                <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to Employee Profile
+              </Link>
+              <span className="text-slate-300 dark:text-slate-700">|</span>
+              <Link
+                to="/contracts"
+                className="inline-flex items-center text-xs font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+              >
+                View All Contracts
+              </Link>
+            </div>
+          )}
+
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Employee Contracts</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {activeEmployeeId && selectedEmployeeName
+                ? `${selectedEmployeeName} — Contracts`
+                : "Employee Contracts"}
+            </h1>
             <span className="inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-950/50 px-2.5 py-0.5 text-xs font-bold text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-              {filteredContracts.length} Contracts
+              {filteredContracts.length} {activeEmployeeId ? "Filtered" : ""} Contracts
             </span>
           </div>
+
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Manage contracts, compensation terms, and agreement periods for employees across the organization.
+            {activeEmployeeId && selectedEmployeeName ? (
+              <span>
+                Showing contracts for <strong className="text-slate-900 dark:text-white font-semibold">{selectedEmployeeName}</strong>
+                {selectedEmployeeCode && <span className="font-mono text-xs ml-1">({selectedEmployeeCode})</span>}
+              </span>
+            ) : (
+              "Manage contracts, compensation terms, and agreement periods for employees across the organization."
+            )}
           </p>
         </div>
 
@@ -221,8 +308,10 @@ export default function EmployeeContractsPage() {
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">Total Contracts</span>
             <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{contracts.length}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Registered employee agreements</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{baseContracts.length}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            {activeEmployeeId ? "Agreements for this employee" : "Registered employee agreements"}
+          </p>
         </div>
 
         <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-4 shadow-2xs">
@@ -249,7 +338,7 @@ export default function EmployeeContractsPage() {
             <DollarSign className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
           </div>
           <p className="text-2xl font-bold text-slate-900 dark:text-white">
-            ₹{contracts.length > 0 ? Math.round(contracts.reduce((acc, c) => acc + Number(c.wage || 0), 0) / contracts.length).toLocaleString("en-IN") : 0}
+            ₹{avgWage.toLocaleString("en-IN")}
           </p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Basic wage benchmark</p>
         </div>
@@ -276,7 +365,7 @@ export default function EmployeeContractsPage() {
               statusFilter === "all" ? "bg-purple-600 text-white shadow-xs" : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
-            All ({contracts.length})
+            All ({baseContracts.length})
           </button>
           <button
             type="button"
@@ -373,11 +462,11 @@ export default function EmployeeContractsPage() {
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="inline-flex items-center justify-end gap-1 shrink-0">
                           <button
                             type="button"
                             onClick={() => setViewingContract(cnt)}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
                             title="View Contract Details"
                           >
                             <Eye className="h-4 w-4" />
@@ -385,7 +474,7 @@ export default function EmployeeContractsPage() {
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(cnt)}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
                             title="Edit Contract"
                           >
                             <Edit3 className="h-4 w-4" />
@@ -393,7 +482,7 @@ export default function EmployeeContractsPage() {
                           <button
                             type="button"
                             onClick={() => setDeletingContractId(cnt.id)}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
                             title="Delete Contract"
                           >
                             <Trash2 className="h-4 w-4" />

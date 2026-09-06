@@ -148,7 +148,7 @@ export default function EmployeeDetailPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 border-t lg:border-t-0 border-slate-200 dark:border-[#40383D] pt-4 lg:pt-0">
             {/* 1. Contracts */}
             <Link
-              to="/employees/contracts"
+              to={`/employees/${employee.id}/contracts`}
               className="flex flex-col items-center justify-center rounded-lg border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-3 text-center hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50/50 dark:hover:bg-purple-950/30 transition group shadow-2xs"
             >
               <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 group-hover:text-purple-700 dark:group-hover:text-purple-300 font-bold text-sm">

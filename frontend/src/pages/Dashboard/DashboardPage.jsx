@@ -29,6 +29,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  LabelList,
 } from "recharts";
 import dashboardService from "../../services/dashboardService";
 import employeeService from "../../services/employeeService";
@@ -45,12 +46,47 @@ import { useAuth } from "../../context/AuthContext";
 function CustomBarTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
     const val = payload[0].value;
+    const fullLabel = payload[0].payload?.rawLabel || label;
     return (
-      <div className="rounded-lg border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-3 shadow-md text-xs">
-        <p className="font-bold text-slate-900 dark:text-white mb-1">{label}</p>
-        <p className="font-semibold text-purple-700 dark:text-purple-300">
-          Net Salary: ₹{Number(val).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+      <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-3.5 shadow-lg text-xs min-w-[180px]">
+        <p className="font-bold text-slate-900 dark:text-white mb-1.5 border-b border-slate-100 dark:border-slate-800 pb-1">
+          {label}
         </p>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-slate-500 dark:text-slate-400 font-medium">Net Salary:</span>
+          <span className="font-extrabold text-purple-700 dark:text-purple-300 font-mono">
+            ₹{Number(val).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
+// Custom Tooltip for Salary Cost by Department Horizontal Bar Chart
+function CustomDeptTooltip({ active, payload }) {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-3.5 shadow-lg text-xs min-w-[200px]">
+        <p className="font-bold text-slate-900 dark:text-white mb-1.5 border-b border-slate-100 dark:border-slate-800 pb-1">
+          {data.name}
+        </p>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-slate-500 dark:text-slate-400 font-medium">Headcount:</span>
+            <span className="font-bold text-slate-900 dark:text-white">
+              {data.headcount} {data.headcount === 1 ? "employee" : "employees"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-4 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+            <span className="text-slate-500 dark:text-slate-400 font-medium">Salary Cost:</span>
+            <span className="font-extrabold text-purple-700 dark:text-purple-300 font-mono">
+              ₹{Number(data.cost).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -360,7 +396,13 @@ export default function DashboardPage() {
       rows = rows.filter((r) => r.name.toLowerCase() === selectedDepartment.toLowerCase());
     }
 
-    return rows;
+    // Sort descending by cost (highest monthly salary cost first)
+    rows.sort((a, b) => b.cost - a.cost);
+
+    return rows.map((r) => ({
+      ...r,
+      displayName: `${r.name} (${r.headcount})`,
+    }));
   }, [salaryByDept, allEmployees, allPayslips, selectedPeriod, selectedDepartment, employeeDeptMap]);
 
   // Attendance Impact Metrics (HR Overview)
@@ -786,7 +828,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyChartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+                  <BarChart data={monthlyChartData} margin={{ top: 25, right: 15, left: 15, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200 dark:stroke-slate-800" />
                     <XAxis
                       dataKey="label"
@@ -806,11 +848,23 @@ export default function DashboardPage() {
                     <Tooltip content={<CustomBarTooltip />} cursor={{ fill: "rgba(113, 75, 103, 0.08)" }} />
                     <Bar
                       dataKey="amount"
-                      radius={[6, 6, 0, 0]}
-                      maxBarSize={48}
+                      radius={[8, 8, 0, 0]}
+                      maxBarSize={44}
                       fill="#714B67"
                       className="fill-[#714B67] dark:fill-[#A9789A]"
-                    />
+                    >
+                      <LabelList
+                        dataKey="amount"
+                        position="top"
+                        formatter={(val) =>
+                          val > 0
+                            ? `₹${val >= 1000 ? `${(val / 1000).toFixed(1).replace(/\.0$/, "")}k` : val}`
+                            : "₹0"
+                        }
+                        style={{ fontSize: "11px", fontWeight: 700 }}
+                        className="fill-[#714B67] dark:fill-[#C495B6]"
+                      />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -818,12 +872,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 2. Department Overview Table */}
+        {/* 2. Salary Cost by Department Graph (Horizontal Bar Chart) */}
         <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-5 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="border-b border-slate-100 dark:border-slate-800 pb-3 mb-4 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">Department Overview</h3>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Salary Cost by Department</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Workforce headcount & disbursed salary breakdown
                 </p>
@@ -831,41 +885,59 @@ export default function DashboardPage() {
               <Building2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-                <thead className="bg-slate-50 dark:bg-slate-900/80 text-[11px] uppercase font-bold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th scope="col" className="px-4 py-3">Department</th>
-                    <th scope="col" className="px-4 py-3 text-center">Headcount</th>
-                    <th scope="col" className="px-4 py-3 text-right">Disbursed Salary</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {departmentTableData.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="px-4 py-6 text-center text-xs text-slate-500 dark:text-slate-400 italic">
-                        No department data recorded yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    departmentTableData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-purple-50/40 dark:hover:bg-purple-950/30 transition">
-                        <td className="px-4 py-3.5 font-bold text-slate-900 dark:text-white">
-                          {row.name}
-                        </td>
-                        <td className="px-4 py-3.5 text-center font-semibold text-slate-700 dark:text-slate-300">
-                          <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
-                            {row.headcount}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5 text-right font-extrabold text-purple-700 dark:text-purple-300 font-mono">
-                          ₹{Number(row.cost).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            <div className="w-full pt-2" style={{ minHeight: "260px" }}>
+              {departmentTableData.length === 0 ? (
+                <div className="flex h-64 items-center justify-center text-xs text-slate-500 dark:text-slate-400 italic">
+                  No department data recorded yet.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(260, departmentTableData.length * 54)}>
+                  <BarChart
+                    layout="vertical"
+                    data={departmentTableData}
+                    margin={{ top: 10, right: 55, left: 10, bottom: 10 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-slate-200 dark:stroke-slate-800" />
+                    <XAxis
+                      type="number"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 11 }}
+                      stroke="#94A3B8"
+                      tickFormatter={(val) => `₹${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="displayName"
+                      tickLine={false}
+                      axisLine={false}
+                      width={150}
+                      tick={{ fontSize: 11, fontWeight: 600 }}
+                      stroke="#94A3B8"
+                    />
+                    <Tooltip content={<CustomDeptTooltip />} cursor={{ fill: "rgba(113, 75, 103, 0.08)" }} />
+                    <Bar
+                      dataKey="cost"
+                      radius={[0, 8, 8, 0]}
+                      maxBarSize={32}
+                      fill="#714B67"
+                      className="fill-[#714B67] dark:fill-[#A9789A]"
+                    >
+                      <LabelList
+                        dataKey="cost"
+                        position="right"
+                        formatter={(val) =>
+                          val > 0
+                            ? `₹${val >= 1000 ? `${(val / 1000).toFixed(1).replace(/\.0$/, "")}k` : val}`
+                            : "₹0"
+                        }
+                        style={{ fontSize: "11px", fontWeight: 700 }}
+                        className="fill-[#714B67] dark:fill-[#C495B6]"
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         </div>
@@ -934,27 +1006,63 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* System Alerts Row */}
-      {alerts.length > 0 && (
-        <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-5 shadow-2xs">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+      {/* Enterprise System Alerts Section */}
+      <div className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-5 shadow-2xs">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+          <div className="flex items-center gap-2">
             <h3 className="text-base font-bold text-slate-900 dark:text-white">Enterprise System Alerts</h3>
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            {alerts.length > 0 ? (
+              <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-950/60 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-300">
+                {alerts.length} Active Alert{alerts.length === 1 ? "" : "s"}
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                All Clear
+              </span>
+            )}
           </div>
-
-          <div className="space-y-2">
-            {alerts.slice(0, 4).map((alt, idx) => (
-              <div key={idx} className="text-xs p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex items-start gap-2.5">
-                <span className={`h-2.5 w-2.5 rounded-full shrink-0 mt-1 ${alt.severity === "error" ? "bg-rose-500" : "bg-amber-500"}`} />
-                <div>
-                  <p className="font-bold text-slate-900 dark:text-white">{alt.title || alt.type}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{alt.message}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <AlertTriangle className="h-5 w-5 text-amber-500" />
         </div>
-      )}
+
+        {alerts.length === 0 ? (
+          <div className="flex items-center justify-center p-6 text-center text-xs text-slate-500 dark:text-slate-400 gap-2">
+            <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+            <span>No active system alerts. All workforce and contract records are up to date.</span>
+          </div>
+        ) : (
+          <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+            {alerts.map((alt, idx) => {
+              const dotColor =
+                alt.severity === "error"
+                  ? "bg-rose-500"
+                  : alt.severity === "info"
+                  ? "bg-blue-500"
+                  : "bg-amber-500";
+              const title = alt.title || (alt.type ? `${alt.type.replace(/_/g, " ").toUpperCase()}` : "Alert");
+
+              return (
+                <div
+                  key={idx}
+                  className="text-xs p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex items-start gap-2.5"
+                >
+                  <span className={`h-2.5 w-2.5 rounded-full shrink-0 mt-1 ${dotColor}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-bold text-slate-900 dark:text-white truncate">{title}</p>
+                      {alt.severity && (
+                        <span className="text-[10px] uppercase font-mono font-bold text-slate-400 dark:text-slate-500 shrink-0">
+                          {alt.severity}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">{alt.message}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

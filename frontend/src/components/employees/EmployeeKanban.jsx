@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Mail, Building2, User, Clock, ChevronRight, Edit3, Trash2, Users } from "lucide-react";
+import { Mail, Building2, User, Clock, ChevronRight, Edit3, Trash2, Users, Eye } from "lucide-react";
 
 export default function EmployeeKanban({ employees = [], onEdit, onDelete }) {
   const navigate = useNavigate();
@@ -36,27 +36,28 @@ export default function EmployeeKanban({ employees = [], onEdit, onDelete }) {
           >
             <div>
               {/* Card Top: Avatar, Name, Code, Status & Actions */}
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-600 dark:bg-purple-700 text-sm font-bold text-white shadow-xs group-hover:scale-105 transition-transform">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-purple-600 dark:bg-purple-700 text-sm font-bold text-white shadow-xs group-hover:scale-105 transition-transform">
                     {initials}
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-400 transition leading-snug">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-400 transition leading-snug truncate">
                       {emp.first_name} {emp.last_name}
                     </h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="inline-flex items-center rounded-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                      <span className="inline-flex shrink-0 items-center rounded-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                         {emp.employee_code}
                       </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate max-w-[120px]">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
                         {emp.job_position || "Employee"}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                {/* Top-Right Action & Status Container */}
+                <div className="flex flex-col items-end gap-1.5 shrink-0 pl-1" onClick={(e) => e.stopPropagation()}>
                   <span
                     className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                       active
@@ -68,33 +69,47 @@ export default function EmployeeKanban({ employees = [], onEdit, onDelete }) {
                     {active ? "Active" : "Inactive"}
                   </span>
                   
-                  {onEdit && (
+                  <div className="inline-flex items-center gap-0.5 rounded-md bg-slate-50 dark:bg-slate-800/60 p-0.5 border border-slate-200/80 dark:border-slate-700/80">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onEdit(emp);
+                        navigate(`/employees/${emp.id}`);
                       }}
-                      className="rounded-lg p-1 text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/50 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer"
-                      title="Edit Employee"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer shadow-2xs"
+                      title="View Details"
                     >
-                      <Edit3 className="h-3.5 w-3.5" />
+                      <Eye className="h-3.5 w-3.5" />
                     </button>
-                  )}
+                    
+                    {onEdit && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(emp);
+                        }}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-purple-700 dark:hover:text-purple-300 transition cursor-pointer shadow-2xs"
+                        title="Edit Employee"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
 
-                  {onDelete && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(emp);
-                      }}
-                      className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
-                      title="Delete Employee"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
+                    {onDelete && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(emp);
+                        }}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer shadow-2xs"
+                        title="Delete Employee"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 

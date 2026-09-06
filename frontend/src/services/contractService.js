@@ -9,6 +9,10 @@ const contractService = {
     const response = await api.get(`/contracts/${id}`);
     return response.data;
   },
+  getMyContracts: async () => {
+    const response = await api.get("/contracts/me");
+    return response.data;
+  },
   create: async (data) => {
     const response = await api.post("/contracts/", data);
     return response.data;

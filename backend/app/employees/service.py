@@ -66,28 +66,49 @@ def create_employee(
     return employee
 
 
+def _enrich_employee_names(employee: Employee):
+    if employee.user:
+        employee.user_email = employee.user.email
+        employee.user_role = (
+            employee.user.role.name
+            if employee.user.role
+            else None
+        )
+    else:
+        employee.user_email = None
+        employee.user_role = None
+
+    if employee.department:
+        employee.department_name = employee.department.name
+    else:
+        employee.department_name = None
+
+    if employee.schedule:
+        employee.schedule_name = employee.schedule.name
+    else:
+        employee.schedule_name = None
+
+    if employee.manager:
+        employee.manager_name = f"{employee.manager.first_name} {employee.manager.last_name}"
+    else:
+        employee.manager_name = None
+
+
 def get_employees(db: Session):
     employees = (
         db.query(Employee)
         .options(
             joinedload(Employee.user).joinedload(User.role),
-            joinedload(Employee.schedule)
+            joinedload(Employee.schedule),
+            joinedload(Employee.department),
+            joinedload(Employee.manager),
         )
         .order_by(Employee.id)
         .all()
     )
 
     for employee in employees:
-        if employee.user:
-            employee.user_email = employee.user.email
-            employee.user_role = (
-                employee.user.role.name
-                if employee.user.role
-                else None
-            )
-        else:
-            employee.user_email = None
-            employee.user_role = None
+        _enrich_employee_names(employee)
 
     return employees
 
@@ -100,7 +121,9 @@ def get_employee(
         db.query(Employee)
         .options(
             joinedload(Employee.user).joinedload(User.role),
-            joinedload(Employee.schedule)
+            joinedload(Employee.schedule),
+            joinedload(Employee.department),
+            joinedload(Employee.manager),
         )
         .filter(Employee.id == employee_id)
         .first()
@@ -109,16 +132,7 @@ def get_employee(
     if not employee:
         return None
 
-    if employee.user:
-        employee.user_email = employee.user.email
-        employee.user_role = (
-            employee.user.role.name
-            if employee.user.role
-            else None
-        )
-    else:
-        employee.user_email = None
-        employee.user_role = None
+    _enrich_employee_names(employee)
 
     return employee
 

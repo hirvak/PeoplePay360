@@ -192,20 +192,20 @@ export default function AttendanceDetails() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           {/* Breadcrumbs */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mb-1">
-            <Link to="/attendance" className="hover:text-purple-700 transition">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">
+            <Link to="/attendance" className="hover:text-purple-700 dark:hover:text-purple-400 transition">
               Attendance
             </Link>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-            <span className="text-slate-700 font-semibold">{employeeName}</span>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-            <span className="text-slate-400">{formattedDate}</span>
+            <ChevronRight className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+            <span className="text-slate-700 dark:text-slate-300 font-semibold">{employeeName}</span>
+            <ChevronRight className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+            <span className="text-slate-400 dark:text-slate-500">{formattedDate}</span>
           </div>
 
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
             Attendance / {employeeName} / {formattedDate}
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Form view of one attendance record
           </p>
         </div>
@@ -247,48 +247,48 @@ export default function AttendanceDetails() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* LEFT COLUMN */}
-        <Card className="border-slate-200 shadow-2xs">
-          <CardHeader className="bg-slate-50/50">
+        <Card className="border-slate-200 dark:border-slate-800 shadow-2xs">
+          <CardHeader className="bg-slate-50/50 dark:bg-slate-900/40">
             <CardTitle className="text-base flex items-center gap-2">
-              <Clock className="h-4 w-4 text-purple-600" />
+              <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               Attendance Information
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-5">
             {/* Employee */}
-            <div className="flex items-center justify-between py-2 border-b border-slate-100">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Employee</span>
+            <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Employee</span>
               <div className="flex items-center gap-2 text-right">
-                <div className="h-6 w-6 rounded-full bg-purple-100 text-purple-700 font-bold text-[10px] flex items-center justify-center">
+                <div className="h-6 w-6 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-[10px] flex items-center justify-center">
                   {employee ? `${employee.first_name[0]}${employee.last_name[0]}` : "EM"}
                 </div>
-                <span className="text-sm font-bold text-slate-900">{employeeName}</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">{employeeName}</span>
               </div>
             </div>
 
             {/* Check In */}
-            <div className="flex items-center justify-between py-2 border-b border-slate-100">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Check In</span>
-              <span className="text-sm font-mono font-semibold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md">
+            <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Check In</span>
+              <span className="text-sm font-mono font-semibold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md">
                 {attendance.check_in ? attendance.check_in.slice(0, 5) : "—"}
               </span>
             </div>
 
             {/* Check Out */}
-            <div className="flex items-center justify-between py-2 border-b border-slate-100">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Check Out</span>
-              <span className="text-sm font-mono font-semibold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md">
+            <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Check Out</span>
+              <span className="text-sm font-mono font-semibold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md">
                 {attendance.check_out ? attendance.check_out.slice(0, 5) : "—"}
               </span>
             </div>
 
             {/* Worked Hours */}
-            <div className="flex items-center justify-between py-3 bg-purple-50/60 rounded-lg px-3 border border-purple-100">
+            <div className="flex items-center justify-between py-3 bg-purple-50/60 dark:bg-purple-950/30 rounded-lg px-3 border border-purple-100 dark:border-purple-900/40">
               <div>
-                <span className="text-xs font-bold text-purple-900 uppercase tracking-wider block">Worked Hours</span>
-                <span className="text-[11px] text-purple-600">Influence payroll calculation</span>
+                <span className="text-xs font-bold text-purple-900 dark:text-purple-300 uppercase tracking-wider block">Worked Hours</span>
+                <span className="text-[11px] text-purple-600 dark:text-purple-400">Influence payroll calculation</span>
               </div>
-              <span className="text-xl font-extrabold text-purple-700">
+              <span className="text-xl font-extrabold text-purple-700 dark:text-purple-300">
                 {workedHours.toFixed(2)} hrs
               </span>
             </div>
@@ -296,29 +296,29 @@ export default function AttendanceDetails() {
         </Card>
 
         {/* RIGHT COLUMN */}
-        <Card className="border-slate-200 shadow-2xs">
-          <CardHeader className="bg-slate-50/50">
+        <Card className="border-slate-200 dark:border-slate-800 shadow-2xs">
+          <CardHeader className="bg-slate-50/50 dark:bg-slate-900/40">
             <CardTitle className="text-base flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-purple-600" />
+              <Building2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               Organizational Details
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-5">
             {/* Department */}
-            <div className="flex items-center justify-between py-2 border-b border-slate-100">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Department</span>
-              <span className="text-sm font-semibold text-slate-800">{departmentName}</span>
+            <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Department</span>
+              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{departmentName}</span>
             </div>
 
             {/* Manager */}
-            <div className="flex items-center justify-between py-2 border-b border-slate-100">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Manager</span>
-              <span className="text-sm font-medium text-slate-700">{managerName}</span>
+            <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Manager</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{managerName}</span>
             </div>
 
             {/* Status */}
-            <div className="flex items-center justify-between py-2 border-b border-slate-100">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</span>
+            <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</span>
               {isPresent ? (
                 <Badge variant="success">Present</Badge>
               ) : (
@@ -327,12 +327,12 @@ export default function AttendanceDetails() {
             </div>
 
             {/* Overtime */}
-            <div className="flex items-center justify-between py-3 bg-amber-50/60 rounded-lg px-3 border border-amber-200/70">
+            <div className="flex items-center justify-between py-3 bg-amber-50/60 dark:bg-amber-950/30 rounded-lg px-3 border border-amber-200/70 dark:border-amber-900/40">
               <div>
-                <span className="text-xs font-bold text-amber-900 uppercase tracking-wider block">Overtime</span>
-                <span className="text-[11px] text-amber-700">Hours exceeding 8.0 hr standard shift</span>
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider block">Overtime</span>
+                <span className="text-[11px] text-amber-700 dark:text-amber-400">Hours exceeding 8.0 hr standard shift</span>
               </div>
-              <span className={`text-xl font-extrabold ${Number(overtimeHours) > 0 ? "text-amber-700" : "text-slate-400"}`}>
+              <span className={`text-xl font-extrabold ${Number(overtimeHours) > 0 ? "text-amber-700 dark:text-amber-400" : "text-slate-400 dark:text-slate-500"}`}>
                 {overtimeHours} hrs
               </span>
             </div>
@@ -341,17 +341,17 @@ export default function AttendanceDetails() {
       </div>
 
       {/* NOTES SECTION */}
-      <Card className="border-slate-200 shadow-2xs">
-        <CardHeader className="bg-slate-50/50">
+      <Card className="border-slate-200 dark:border-slate-800 shadow-2xs">
+        <CardHeader className="bg-slate-50/50 dark:bg-slate-900/40">
           <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4 text-purple-600" />
+            <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             Notes
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
-          <div className="rounded-lg bg-slate-50 p-4 border border-slate-200/80 text-sm text-slate-700 leading-relaxed">
+          <div className="rounded-lg bg-slate-50 dark:bg-slate-900/60 p-4 border border-slate-200/80 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
             {notes || (
-              <span className="text-slate-600">
+              <span className="text-slate-600 dark:text-slate-400">
                 System-generated from check-in/check-out or manually corrected by an authorized user.
               </span>
             )}
@@ -363,7 +363,7 @@ export default function AttendanceDetails() {
       <Dialog open={editModalOpen} onClose={() => setEditModalOpen(false)}>
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 text-purple-700">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
               <Edit3 className="h-5 w-5" />
             </div>
             <div>
@@ -376,7 +376,7 @@ export default function AttendanceDetails() {
         <form onSubmit={handleSubmit(handleCorrectionSubmit)} className="space-y-4 my-2">
           {/* Attendance Date */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700">Attendance Date *</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Attendance Date *</label>
             <Input type="date" {...register("attendance_date")} />
             {errors.attendance_date && (
               <p className="text-xs text-rose-600">{errors.attendance_date.message}</p>
@@ -386,7 +386,7 @@ export default function AttendanceDetails() {
           {/* Check In & Check Out */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Check In Time</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Check In Time</label>
               <Input type="time" {...register("check_in")} />
               {errors.check_in && (
                 <p className="text-xs text-rose-600">{errors.check_in.message}</p>
@@ -394,7 +394,7 @@ export default function AttendanceDetails() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Check Out Time</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Check Out Time</label>
               <Input type="time" {...register("check_out")} />
               {errors.check_out && (
                 <p className="text-xs text-rose-600">{errors.check_out.message}</p>
@@ -404,10 +404,10 @@ export default function AttendanceDetails() {
 
           {/* Correction Notes */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700">Correction Notes / Reason</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Correction Notes / Reason</label>
             <textarea
               rows={3}
-              className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-2xs transition-colors placeholder:text-slate-400 focus-visible:outline-hidden focus-visible:border-purple-500 focus-visible:ring-2 focus-visible:ring-purple-500/20"
+              className="flex w-full rounded-md border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] px-3 py-2 text-sm text-slate-800 dark:text-slate-100 shadow-2xs transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:outline-hidden focus-visible:border-purple-500 focus-visible:ring-2 focus-visible:ring-purple-500/20"
               placeholder="e.g. Manually corrected due to scanner malfunction."
               {...register("notes")}
             />

@@ -128,10 +128,7 @@ export default function TimeOffRequestDetails() {
 
   // Status check for action eligibility
   const statusLower = (request?.status || "").toLowerCase();
-  const isPending =
-    statusLower !== "approved" &&
-    statusLower !== "refused" &&
-    statusLower !== "rejected";
+  const isPending = statusLower === "pending";
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -148,8 +145,8 @@ export default function TimeOffRequestDetails() {
           Back to Requests
         </Button>
 
-        {/* Action Buttons (Approve / Refuse) */}
-        {request && (
+        {/* Action Buttons (Approve / Refuse) - Only for Pending requests */}
+        {request && isPending && (
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -215,7 +212,7 @@ export default function TimeOffRequestDetails() {
 
       {/* 1. Loading State */}
       {isLoading && (
-        <Card className="p-6 border-slate-200 bg-white space-y-6">
+        <Card className="p-6 border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <Skeleton className="h-5 w-40" />
@@ -233,7 +230,7 @@ export default function TimeOffRequestDetails() {
 
       {/* 2. Error State */}
       {isError && (
-        <Card className="p-6 border-slate-200 bg-white">
+        <Card className="p-6 border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20]">
           <Alert variant="destructive" title="Failed to load request details">
             {error?.response?.data?.detail ||
               error?.message ||
@@ -249,14 +246,14 @@ export default function TimeOffRequestDetails() {
 
       {/* 3. Not Found State */}
       {!isLoading && !isError && !request && (
-        <Card className="p-12 text-center border-slate-200 bg-white shadow-xs">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600 mb-3">
+        <Card className="p-12 text-center border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] shadow-xs">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 mb-3">
             <AlertCircle className="h-6 w-6" />
           </div>
-          <h3 className="text-base font-semibold text-slate-900">
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white">
             Request Not Found
           </h3>
-          <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
             The requested time off request (ID #{id}) does not exist or has been removed.
           </p>
           <Button
@@ -274,13 +271,13 @@ export default function TimeOffRequestDetails() {
       {!isLoading && !isError && request && (
         <div className="space-y-6">
           {/* Main Information Card */}
-          <Card className="border-slate-200 bg-white shadow-sm rounded-xl overflow-hidden">
-            <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4">
-              <CardTitle className="text-base font-semibold text-slate-800 flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-purple-600" />
+          <Card className="border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] shadow-sm rounded-xl overflow-hidden">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 pb-4">
+              <CardTitle className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                 <span>Request Details</span>
               </CardTitle>
-              <CardDescription className="text-xs text-slate-500">
+              <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
                 Detailed information for Request #{request.id}
               </CardDescription>
             </CardHeader>
@@ -289,60 +286,60 @@ export default function TimeOffRequestDetails() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                 {/* Employee */}
                 <div className="space-y-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <User className="h-3.5 w-3.5 text-purple-600" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                     Employee
                   </span>
-                  <div className="text-sm font-bold text-slate-900">
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">
                     {employeeMap.get(request.employee_id) || `Employee #${request.employee_id}`}
                   </div>
                 </div>
 
                 {/* Time Off Type */}
                 <div className="space-y-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-purple-600" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                     Time Off Type
                   </span>
-                  <div className="text-sm font-bold text-slate-900">
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">
                     {leaveTypeMap.get(request.leave_type_id) || `Type #${request.leave_type_id}`}
                   </div>
                 </div>
 
                 {/* Start Date */}
                 <div className="space-y-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                     Start Date
                   </span>
-                  <div className="text-sm font-medium text-slate-800">
+                  <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
                     {request.start_date}
                   </div>
                 </div>
 
                 {/* End Date */}
                 <div className="space-y-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                     End Date
                   </span>
-                  <div className="text-sm font-medium text-slate-800">
+                  <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
                     {request.end_date}
                   </div>
                 </div>
 
                 {/* Duration */}
                 <div className="space-y-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-purple-600" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                     Duration
                   </span>
-                  <div className="text-sm font-bold text-purple-700">
+                  <div className="text-sm font-bold text-purple-700 dark:text-purple-300">
                     {request.requested_amount ? `${request.requested_amount} Days` : "1 Day"}
                   </div>
                 </div>
 
                 {/* Status */}
                 <div className="space-y-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                     Current Status
                   </span>
                   <div>{getStatusBadge(request.status)}</div>
@@ -351,10 +348,10 @@ export default function TimeOffRequestDetails() {
                 {/* Optional backend fields if present */}
                 {request.created_at && (
                   <div className="space-y-1">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                       Submitted On
                     </span>
-                    <div className="text-xs text-slate-600">
+                    <div className="text-xs text-slate-600 dark:text-slate-300">
                       {new Date(request.created_at).toLocaleString()}
                     </div>
                   </div>
@@ -362,11 +359,11 @@ export default function TimeOffRequestDetails() {
 
                 {request.approved_by && (
                   <div className="space-y-1">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                       Approved / Reviewed By
                     </span>
-                    <div className="text-xs font-medium text-slate-800">
+                    <div className="text-xs font-medium text-slate-800 dark:text-slate-200">
                       {employeeMap.get(request.approved_by) || `User #${request.approved_by}`}
                     </div>
                   </div>
@@ -376,15 +373,15 @@ export default function TimeOffRequestDetails() {
           </Card>
 
           {/* Description Card */}
-          <Card className="border-slate-200 bg-white shadow-sm rounded-xl overflow-hidden">
-            <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-3">
-              <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                <FileText className="h-4 w-4 text-purple-600" />
+          <Card className="border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] shadow-sm rounded-xl overflow-hidden">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 pb-3">
+              <CardTitle className="text-sm font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                 <span>Description / Reason</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-5">
-              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                 {request.reason || "No description provided."}
               </p>
             </CardContent>

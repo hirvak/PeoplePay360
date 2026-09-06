@@ -100,6 +100,20 @@ def get_dashboard_summary(db: Session):
     else:
         attendance_health = 0
 
+    # --------------------------------------------------------
+    # Total Employees & Active Payruns
+    # --------------------------------------------------------
+
+    total_employees = db.query(Employee).count()
+
+    total_payruns = (
+        db.query(Payrun)
+        .filter(
+            Payrun.status != "Cancelled"
+        )
+        .count()
+    )
+
     return {
         "total_net_salary_paid": total_net_salary_paid,
         "payslips_generated": generated_payslips,
@@ -109,6 +123,8 @@ def get_dashboard_summary(db: Session):
             attendance_health,
             2
         ),
+        "total_employees": total_employees,
+        "total_payruns": total_payruns,
     }
 
 

@@ -1,60 +1,35 @@
-const API_BASE_URL = "http://127.0.0.1:8000";
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("peoplepay360_token");
-
-  return {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
-};
-
-
-const getAll = async () => {
-  const response = await fetch(
-    `${API_BASE_URL}/employees/`,
-    {
-      method: "GET",
-      headers: getAuthHeaders(),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-
-    throw new Error(
-      error.detail || "Failed to fetch employees"
-    );
-  }
-
-  return await response.json();
-};
-
-
-const getById = async (id) => {
-  const response = await fetch(
-    `${API_BASE_URL}/employees/${id}`,
-    {
-      method: "GET",
-      headers: getAuthHeaders(),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-
-    throw new Error(
-      error.detail || "Failed to fetch employee"
-    );
-  }
-
-  return await response.json();
-};
-
+import api from "./api";
 
 const employeeService = {
-  getAll,
-  getById,
+  getAll: async () => {
+    const response = await api.get("/employees/");
+    return response.data;
+  },
+
+  getById: async (id) => {
+    const response = await api.get(`/employees/${id}`);
+    return response.data;
+  },
+
+  create: async (data) => {
+    const response = await api.post("/employees/", data);
+    return response.data;
+  },
+
+  update: async (id, data) => {
+    const response = await api.put(`/employees/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/employees/${id}`);
+    return response.data;
+  },
+
+  getMe: async () => {
+    const response = await api.get("/employees/me");
+    return response.data;
+  },
 };
 
-export default employeeService;
+export default employeeService;

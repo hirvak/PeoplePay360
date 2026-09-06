@@ -34,6 +34,9 @@ class EmployeeResponse(EmployeeBase):
     user_id: int | None
     user_email: str | None = None
     user_role: str | None = None
+    department_name: str | None = None
+    schedule_name: str | None = None
+    manager_name: str | None = None
     is_active: bool
     created_at: datetime
     updated_at: datetime

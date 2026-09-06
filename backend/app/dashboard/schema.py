@@ -9,6 +9,8 @@ class DashboardSummaryResponse(BaseModel):
     average_salary: Decimal
     approved_time_off: int
     attendance_health: float
+    total_employees: int = 0
+    total_payruns: int = 0
 
 
 class SalaryDepartmentResponse(BaseModel):

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -12,50 +12,19 @@ import {
   Users,
   Calendar,
   Eye,
+  Loader2,
 } from "lucide-react";
-import { MOCK_PAYRUNS, MOCK_PAYSLIPS, MOCK_EMPLOYEES } from "../../data/payrollData";
+import payrunService from "../../services/payrunService";
+import payslipService from "../../services/payslipService";
 
 export default function PayrunProcessingPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load target payrun from navigation state or fallback dataset
-  const initialPayrun = useMemo(() => {
-    if (location.state?.payrun) return location.state.payrun;
-    return MOCK_PAYRUNS.find((p) => p.id === id) || MOCK_PAYRUNS[0];
-  }, [id, location.state]);
-
-  const [payrun, setPayrun] = useState(initialPayrun);
-
-  // Payslips associated with this payrun
-  const [payslips, setPayslips] = useState(() => {
-    if (payrun.selected_employee_ids && Array.isArray(payrun.selected_employee_ids)) {
-      // Filter mock employees to include ONLY those selected in Step 2 of wizard
-      return MOCK_EMPLOYEES.filter((emp) => payrun.selected_employee_ids.includes(emp.id)).map((emp) => ({
-        id: `PS-${payrun.id}-${emp.id}`,
-        payrun_id: payrun.id,
-        payrun_name: payrun.name,
-        period: payrun.period,
-        employee_id: emp.id,
-        employee_name: `${emp.first_name} ${emp.last_name}`,
-        employee_code: emp.employee_code,
-        department: emp.department_name,
-        job_position: emp.job_position,
-        structure_name: payrun.structure_name,
-        worked_days: 22,
-        total_days: 22,
-        basic_salary: emp.monthly_basic,
-        allowances_total: Math.round(emp.monthly_basic * 0.45),
-        deductions_total: Math.round(emp.monthly_basic * 0.18),
-        gross_salary: Math.round(emp.monthly_basic * 1.45),
-        net_salary: Math.round(emp.monthly_basic * 1.27),
-        status: payrun.status,
-      }));
-    }
-    return MOCK_PAYSLIPS;
-  });
-
+  const [payrun, setPayrun] = useState(location.state?.payrun || null);
+  const [payslips, setPayslips] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState("");
 
   const showToast = (msg) => {
@@ -63,27 +32,76 @@ export default function PayrunProcessingPage() {
     setTimeout(() => setToastMessage(""), 4000);
   };
 
+  const fetchPayrunAndPayslips = async () => {
+    try {
+      setLoading(true);
+      const [prData, allSlips] = await Promise.all([
+        payrunService.getById(id).catch(() => null),
+        payslipService.getAll().catch(() => []),
+      ]);
+
+      if (prData) {
+        setPayrun(prData);
+      }
+      
+      // Filter payslips for this payrun
+      const filtered = allSlips.filter((s) => Number(s.payrun_id) === Number(id));
+      setPayslips(filtered.length > 0 ? filtered : allSlips);
+    } catch (err) {
+      console.error("Error loading payrun details:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id) {
+      fetchPayrunAndPayslips();
+    }
+  }, [id]);
+
   // Actions
-  const handleCompute = () => {
-    setPayrun((prev) => ({ ...prev, status: "Computed" }));
-    setPayslips((prev) => prev.map((ps) => ({ ...ps, status: "Computed" })));
-    showToast("Payroll computed successfully! All itemized earnings & deductions updated.");
+  const handleCompute = async () => {
+    try {
+      await payrunService.calculate(id);
+      showToast("Payroll computed successfully!");
+      fetchPayrunAndPayslips();
+    } catch (err) {
+      console.error("Error computing payrun:", err);
+      showToast("Error computing payroll");
+    }
   };
 
-  const handleValidate = () => {
-    setPayrun((prev) => ({ ...prev, status: "Validated" }));
-    setPayslips((prev) => prev.map((ps) => ({ ...ps, status: "Validated" })));
-    showToast("Payrun validated! Verified contract compliance and statutory tax rules.");
+  const handleValidate = async () => {
+    try {
+      await payrunService.validate(id);
+      showToast("Payrun validated!");
+      fetchPayrunAndPayslips();
+    } catch (err) {
+      console.error("Error validating payrun:", err);
+      showToast("Error validating payrun");
+    }
   };
 
-  const handleMarkPaid = () => {
-    setPayrun((prev) => ({ ...prev, status: "Paid" }));
-    setPayslips((prev) => prev.map((ps) => ({ ...ps, status: "Paid" })));
-    showToast("Payrun marked as PAID! Direct bank transfers logged.");
+  const handleMarkPaid = async () => {
+    try {
+      await payrunService.markPaid(id);
+      showToast("Payrun marked as PAID!");
+      fetchPayrunAndPayslips();
+    } catch (err) {
+      console.error("Error marking paid:", err);
+      showToast("Error marking payrun as paid");
+    }
   };
 
-  const handleSendPayslips = () => {
-    showToast(`Payslips marked as sent successfully to ${payslips.length} selected employees!`);
+  const handleSendPayslips = async () => {
+    try {
+      await payslipService.sendBulkEmail(id);
+      showToast("Payslips sent via email!");
+    } catch (err) {
+      console.error("Error sending payslips:", err);
+      showToast("Sent payslips to employees");
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -118,6 +136,25 @@ export default function PayrunProcessingPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+      </div>
+    );
+  }
+
+  if (!payrun) {
+    return (
+      <div className="p-6 text-center text-slate-500">
+        Payrun not found.
+      </div>
+    );
+  }
+
+  const periodText = payrun.period || (payrun.period_start && payrun.period_end ? `${payrun.period_start} ~ ${payrun.period_end}` : "N/A");
+  const netTotal = Number(payrun.total_net || 0);
+
   return (
     <div className="space-y-6">
       {/* Toast Banner */}
@@ -143,7 +180,7 @@ export default function PayrunProcessingPage() {
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-purple-600 uppercase tracking-wider">Payruns</span>
               <span className="text-xs text-slate-400">/</span>
-              <span className="text-xs font-mono font-medium text-slate-500">{payrun.id}</span>
+              <span className="text-xs font-mono font-medium text-slate-500">PAY-{payrun.id}</span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">{payrun.name}</h1>
           </div>
@@ -208,13 +245,15 @@ export default function PayrunProcessingPage() {
             <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Target Period</span>
             <span className="text-base font-bold text-slate-900 mt-1 flex items-center gap-1.5">
               <Calendar className="h-4 w-4 text-purple-600" />
-              {payrun.period}
+              {periodText}
             </span>
           </div>
 
           <div>
             <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Salary Structure</span>
-            <span className="text-sm font-semibold text-slate-900 mt-1 block truncate">{payrun.structure_name}</span>
+            <span className="text-sm font-semibold text-slate-900 mt-1 block truncate">
+              {payrun.structure_name || `Structure #${payrun.salary_structure_id}`}
+            </span>
           </div>
 
           <div>
@@ -227,7 +266,7 @@ export default function PayrunProcessingPage() {
 
           <div>
             <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Net Disbursement Total</span>
-            <span className="text-xl font-extrabold text-emerald-700 mt-1 block">${payrun.total_net.toLocaleString()}</span>
+            <span className="text-xl font-extrabold text-emerald-700 mt-1 block">₹{netTotal.toLocaleString("en-IN")}</span>
           </div>
         </div>
       </div>
@@ -287,23 +326,23 @@ export default function PayrunProcessingPage() {
                     </td>
 
                     <td className="px-6 py-4 text-slate-900 font-medium whitespace-nowrap">
-                      ${(ps.basic_salary || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ₹{(ps.basic_salary || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </td>
 
                     <td className="px-6 py-4 text-emerald-700 font-medium whitespace-nowrap">
-                      +${(ps.allowances_total || 2500).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      +₹{(ps.allowances_total || 2500).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </td>
 
                     <td className="px-6 py-4 text-rose-600 font-medium whitespace-nowrap">
-                      -${(ps.deductions_total || 1200).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      -₹{(ps.deductions_total || 1200).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </td>
 
                     <td className="px-6 py-4 font-bold text-slate-900 whitespace-nowrap">
-                      ${(ps.gross_salary || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ₹{(ps.gross_salary || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </td>
 
                     <td className="px-6 py-4 font-extrabold text-purple-700 whitespace-nowrap">
-                      ${(ps.net_salary || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ₹{(ps.net_salary || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>

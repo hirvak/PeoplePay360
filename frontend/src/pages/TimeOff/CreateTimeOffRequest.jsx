@@ -1,299 +1,270 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import {
-  ArrowLeft,
-  Calendar,
-  Clock,
-  User,
-  FileText,
-  Loader2,
-  CheckCircle2,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Alert } from "@/components/ui/alert";
-import {
-  useTimeOffTypes,
-  useEmployees,
-  useCreateTimeOffRequest,
-} from "@/hooks/useTimeOff";
-
-// Zod Validation Schema
-const createRequestSchema = z
-  .object({
-    employee_id: z.string().min(1, "Employee selection is required"),
-    leave_type_id: z.string().min(1, "Time Off Type selection is required"),
-    start_date: z.string().min(1, "Start Date is required"),
-    end_date: z.string().min(1, "End Date is required"),
-    reason: z.string().optional(),
-  })
-  .refine(
-    (data) => {
-      if (data.start_date && data.end_date) {
-        return new Date(data.end_date) >= new Date(data.start_date);
-      }
-      return true;
-    },
-    {
-      message: "End Date cannot be before Start Date",
-      path: ["end_date"],
-    }
-  );
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Calendar, Clock, User, FileText, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import timeOffService from "../../services/timeOffService";
+import employeeService from "../../services/employeeService";
+import { useAuth } from "../../context/AuthContext";
 
 export default function CreateTimeOffRequest() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isEmployee = user?.role === "Employee";
+
+  const [employees, setEmployees] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const { data: employees = [], isLoading: loadingEmployees } = useEmployees();
-  const { data: leaveTypes = [], isLoading: loadingTypes } = useTimeOffTypes();
-  const createMutation = useCreateTimeOffRequest();
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(createRequestSchema),
-    defaultValues: {
-      employee_id: "",
-      leave_type_id: "",
-      start_date: "",
-      end_date: "",
-      reason: "",
-    },
+  const [formData, setFormData] = useState({
+    employee_id: "",
+    leave_type_id: "",
+    start_date: "",
+    end_date: "",
+    reason: "",
   });
 
-  const startDate = watch("start_date");
-  const endDate = watch("end_date");
+  useEffect(() => {
+    async function loadOptions() {
+      setLoadingData(true);
+      try {
+        if (isEmployee) {
+          const balData = await timeOffService.getMyBalance().catch(() => []);
+          const availableTypes = (balData || []).map((b) => ({
+            id: b.leave_type_id,
+            name: b.leave_type_name || b.leave_type?.name || (b.leave_type_id ? `Leave Type #${b.leave_type_id}` : "N/A"),
+          }));
 
-  // Calculate inclusive duration in days
+          setLeaveTypes(availableTypes);
+          if (availableTypes.length > 0) {
+            setFormData((prev) => ({ ...prev, leave_type_id: String(availableTypes[0].id) }));
+          }
+        } else {
+          const typesData = await timeOffService.getTypes().catch(() => []);
+          const empData = await employeeService.getAll().catch(() => []);
+          setLeaveTypes(typesData || []);
+          setEmployees(empData || []);
+          if (typesData && typesData.length > 0) {
+            setFormData((prev) => ({ ...prev, leave_type_id: String(typesData[0].id) }));
+          }
+        }
+      } catch (err) {
+        console.error("Error loading options:", err);
+      } finally {
+        setLoadingData(false);
+      }
+    }
+    loadOptions();
+  }, [isEmployee]);
+
   const durationDays = useMemo(() => {
-    if (!startDate || !endDate) return 0;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    if (!formData.start_date || !formData.end_date) return 0;
+    const start = new Date(formData.start_date);
+    const end = new Date(formData.end_date);
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return 0;
     const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    return diffDays;
-  }, [startDate, endDate]);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  }, [formData.start_date, formData.end_date]);
 
-  const onSubmit = async (data) => {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setErrorMsg("");
+
+    if (!formData.leave_type_id) {
+      setErrorMsg("Please select a Time Off Type.");
+      return;
+    }
+    if (!formData.start_date || !formData.end_date) {
+      setErrorMsg("Please provide both Start and End dates.");
+      return;
+    }
+    if (new Date(formData.end_date) < new Date(formData.start_date)) {
+      setErrorMsg("End Date cannot be before Start Date.");
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const payload = {
-        employee_id: parseInt(data.employee_id, 10),
-        leave_type_id: parseInt(data.leave_type_id, 10),
-        start_date: data.start_date,
-        end_date: data.end_date,
-        reason: data.reason || "",
+        leave_type_id: parseInt(formData.leave_type_id, 10),
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        reason: formData.reason || undefined,
         requested_amount: durationDays > 0 ? durationDays : 1,
       };
 
-      await createMutation.mutateAsync(payload);
-      navigate("/time-off/requests", {
-        state: { message: "Time off request created successfully." },
-      });
+      if (!isEmployee) {
+        if (!formData.employee_id) {
+          setErrorMsg("Please select an employee.");
+          setIsSubmitting(false);
+          return;
+        }
+        payload.employee_id = parseInt(formData.employee_id, 10);
+        await timeOffService.createRequest(payload);
+      } else {
+        payload.employee_id = 0; // Backend overwrites with current_employee.id
+        await timeOffService.createMyRequest(payload);
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["timeOffRequests"] });
+      navigate(isEmployee ? "/time-off" : "/time-off/requests");
     } catch (err) {
-      console.error("Create request failed:", err);
-      setErrorMsg(
-        err.response?.data?.detail ||
-          err.message ||
-          "Failed to submit time off request. Please try again."
-      );
+      setErrorMsg(err?.response?.data?.detail || err.message || "Failed to create leave request.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Back Button & Header */}
+    <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           onClick={() => navigate("/time-off/requests")}
-          className="text-slate-600 border-slate-200 hover:bg-slate-100"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#211D20] px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
         >
-          <ArrowLeft className="h-4 w-4 mr-1.5" />
-          Back to Requests
-        </Button>
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Requests</span>
+        </button>
       </div>
 
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          New Time Off Request
-        </h1>
-        <p className="text-sm text-slate-500">
-          Submit a new time off request for an employee.
-        </p>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">New Time Off Request</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Submit a leave request for approval.</p>
       </div>
 
-      {/* Error Alert */}
       {errorMsg && (
-        <Alert variant="destructive" title="Submission Error">
-          {errorMsg}
-        </Alert>
+        <div className="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 p-4 text-xs font-medium text-rose-700 dark:text-rose-300 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+          <span>{errorMsg}</span>
+        </div>
       )}
 
-      {/* Main Form Card */}
-      <Card className="border-slate-200 bg-white shadow-md rounded-xl overflow-hidden">
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4">
-            <CardTitle className="text-base font-semibold text-slate-800 flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-purple-600" />
-              <span>Time Off Details</span>
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500">
-              Select employee, leave category, and requested date range.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="p-6 space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Employee Selection */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5 text-purple-600" />
-                  <span>Employee *</span>
-                </label>
-                <select
-                  className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                  {...register("employee_id")}
-                >
-                  <option value="">
-                    {loadingEmployees ? "Loading employees..." : "-- Select Employee --"}
-                  </option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.first_name} {emp.last_name} ({emp.employee_code || `ID #${emp.id}`})
-                    </option>
-                  ))}
-                </select>
-                {errors.employee_id && (
-                  <p className="text-xs text-rose-600">{errors.employee_id.message}</p>
-                )}
-              </div>
-
-              {/* Time Off Type Selection */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-purple-600" />
-                  <span>Time Off Type *</span>
-                </label>
-                <select
-                  className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                  {...register("leave_type_id")}
-                >
-                  <option value="">
-                    {loadingTypes ? "Loading time off types..." : "-- Select Time Off Type --"}
-                  </option>
-                  {leaveTypes.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name} {type.is_paid ? "(Paid)" : "(Unpaid)"}
-                    </option>
-                  ))}
-                </select>
-                {errors.leave_type_id && (
-                  <p className="text-xs text-rose-600">{errors.leave_type_id.message}</p>
-                )}
-              </div>
-
-              {/* Start Date */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700">
-                  Start Date *
-                </label>
-                <Input
-                  type="date"
-                  className="bg-white"
-                  {...register("start_date")}
-                />
-                {errors.start_date && (
-                  <p className="text-xs text-rose-600">{errors.start_date.message}</p>
-                )}
-              </div>
-
-              {/* End Date */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700">
-                  End Date *
-                </label>
-                <Input
-                  type="date"
-                  className="bg-white"
-                  {...register("end_date")}
-                />
-                {errors.end_date && (
-                  <p className="text-xs text-rose-600">{errors.end_date.message}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Duration Display Box */}
-            <div className="p-3.5 rounded-lg bg-purple-50/60 border border-purple-100 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-medium text-purple-900">
-                <Clock className="h-4 w-4 text-purple-600" />
-                <span>Calculated Duration:</span>
-              </div>
-              <div className="text-sm font-bold text-purple-700">
-                {durationDays > 0 ? `${durationDays} Day${durationDays > 1 ? "s" : ""}` : "—"}
-              </div>
-            </div>
-
-            {/* Description / Reason */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5 text-purple-600" />
-                <span>Reason / Description</span>
-              </label>
-              <textarea
-                rows={3}
-                placeholder="Brief description or reason for time off request..."
-                className="w-full rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                {...register("reason")}
-              />
-              {errors.reason && (
-                <p className="text-xs text-rose-600">{errors.reason.message}</p>
-              )}
-            </div>
-          </CardContent>
-
-          <CardFooter className="bg-slate-50/70 px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/time-off/requests")}
-              disabled={isSubmitting || createMutation.isPending}
-              className="border-slate-200 text-slate-700 hover:bg-slate-100"
+      <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-6 shadow-xs space-y-5">
+        {!isEmployee && (
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <User className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+              <span>Employee *</span>
+            </label>
+            <select
+              name="employee_id"
+              value={formData.employee_id}
+              onChange={handleChange}
+              className="w-full rounded-lg border border-slate-300 dark:border-[#40383D] bg-white dark:bg-[#211D20] px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-purple-600 focus:outline-hidden [&>option]:bg-white [&>option]:dark:bg-[#211D20]"
+              required
             >
-              Cancel
-            </Button>
+              <option value="">{loadingData ? "Loading employees..." : "-- Select Employee --"}</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.first_name} {emp.last_name} ({emp.employee_code})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
-            <Button
-              type="submit"
-              disabled={isSubmitting || createMutation.isPending}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-xs"
-            >
-              {isSubmitting || createMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Submitting Request...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Submit Request
-                </>
-              )}
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+            <Calendar className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+            <span>Time Off Type *</span>
+          </label>
+          <select
+            name="leave_type_id"
+            value={formData.leave_type_id}
+            onChange={handleChange}
+            className="w-full rounded-lg border border-slate-300 dark:border-[#40383D] bg-white dark:bg-[#211D20] px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-purple-600 focus:outline-hidden [&>option]:bg-white [&>option]:dark:bg-[#211D20]"
+            required
+          >
+            <option value="">{loadingData ? "Loading types..." : "-- Select Time Off Type --"}</option>
+            {leaveTypes.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.name} {type.is_paid ? "(Paid)" : "(Unpaid)"}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Start Date *</label>
+            <input
+              type="date"
+              name="start_date"
+              value={formData.start_date}
+              onChange={handleChange}
+              className="w-full rounded-lg border border-slate-300 dark:border-[#40383D] bg-white dark:bg-[#211D20] px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-purple-600 focus:outline-hidden"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">End Date *</label>
+            <input
+              type="date"
+              name="end_date"
+              value={formData.end_date}
+              onChange={handleChange}
+              className="w-full rounded-lg border border-slate-300 dark:border-[#40383D] bg-white dark:bg-[#211D20] px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-purple-600 focus:outline-hidden"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="rounded-lg bg-purple-50 dark:bg-purple-950/60 p-3.5 border border-purple-100 dark:border-purple-800 flex items-center justify-between">
+          <span className="text-xs font-medium text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+            <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            Duration:
+          </span>
+          <span className="text-sm font-bold text-purple-700 dark:text-purple-300">
+            {durationDays > 0 ? `${durationDays} Day${durationDays > 1 ? "s" : ""}` : "—"}
+          </span>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+            <FileText className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+            <span>Reason / Notes</span>
+          </label>
+          <textarea
+            name="reason"
+            rows={3}
+            value={formData.reason}
+            onChange={handleChange}
+            placeholder="Brief reason for requested leave..."
+            className="w-full rounded-lg border border-slate-300 dark:border-[#40383D] bg-white dark:bg-[#211D20] p-3 text-sm text-slate-900 dark:text-slate-100 focus:border-purple-600 focus:outline-hidden"
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => navigate("/time-off/requests")}
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 cursor-pointer disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4" />
+            )}
+            <span>Submit Request</span>
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

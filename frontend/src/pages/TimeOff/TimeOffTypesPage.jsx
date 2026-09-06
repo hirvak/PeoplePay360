@@ -82,10 +82,15 @@ export default function TimeOffTypesPage() {
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Time Off Types
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Time Off Types
+            </h1>
+            <Badge className="bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold border-purple-200 dark:border-purple-800">
+              {timeOffTypes.length}
+            </Badge>
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Manage the different types of time off available to employees
           </p>
         </div>
@@ -104,15 +109,15 @@ export default function TimeOffTypesPage() {
 
       {/* Success Notification Banner */}
       {successBanner && (
-        <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-between text-emerald-800 text-sm">
+        <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-emerald-800 dark:text-emerald-300 text-sm">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             <span>{successBanner}</span>
           </div>
           <button
             type="button"
             onClick={() => setSuccessBanner("")}
-            className="text-emerald-600 hover:text-emerald-900"
+            className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200"
           >
             <X className="h-4 w-4" />
           </button>
@@ -120,22 +125,22 @@ export default function TimeOffTypesPage() {
       )}
 
       {/* Control Bar: Search & Refresh */}
-      <Card className="p-4 border-slate-200 bg-white shadow-2xs">
+      <Card className="p-4 border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] shadow-2xs">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
             <Input
               type="text"
               placeholder="Search time off types..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-8 bg-slate-50/50"
+              className="pl-9 pr-8 bg-slate-50/50 dark:bg-slate-900/50"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-2.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -148,7 +153,7 @@ export default function TimeOffTypesPage() {
               variant="outline"
               size="sm"
               onClick={() => refetch()}
-              className="text-slate-600 hover:text-slate-900 border-slate-200"
+              className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-[#40383D]"
               title="Refresh time off types"
             >
               <RefreshCw
@@ -161,7 +166,7 @@ export default function TimeOffTypesPage() {
       </Card>
 
       {/* UI States & Time Off Types Table */}
-      <Card className="border-slate-200 bg-white shadow-xs overflow-hidden">
+      <Card className="border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] shadow-xs overflow-hidden">
         {/* Error State */}
         {isError && (
           <div className="p-6">
@@ -197,13 +202,13 @@ export default function TimeOffTypesPage() {
         {/* Empty State */}
         {!isLoading && !isError && filteredTypes.length === 0 && (
           <div className="p-12 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-purple-50 text-purple-600 mb-3">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 mb-3">
               <Tag className="h-6 w-6" />
             </div>
-            <h3 className="text-base font-semibold text-slate-900">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">
               No Time Off Types Found
             </h3>
-            <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
               {searchQuery
                 ? `No time off types matching "${searchQuery}". Try clearing search.`
                 : "There are no time off types defined in the system yet."}
@@ -225,16 +230,16 @@ export default function TimeOffTypesPage() {
         {/* Data Table */}
         {!isLoading && !isError && filteredTypes.length > 0 && (
           <Table>
-            <TableHeader className="bg-slate-50/70">
-              <TableRow className="border-slate-200">
-                <TableHead className="font-semibold text-slate-700">Name</TableHead>
-                <TableHead className="font-semibold text-slate-700">Description</TableHead>
-                <TableHead className="font-semibold text-slate-700">Unit</TableHead>
-                <TableHead className="font-semibold text-slate-700 text-center">Allocation Required</TableHead>
-                <TableHead className="font-semibold text-slate-700 text-center">Approval Required</TableHead>
-                <TableHead className="font-semibold text-slate-700 text-center">Paid</TableHead>
-                <TableHead className="font-semibold text-slate-700 text-center">Status</TableHead>
-                <TableHead className="font-semibold text-slate-700 text-right">Actions</TableHead>
+            <TableHeader className="bg-slate-50/70 dark:bg-slate-900/80">
+              <TableRow className="border-slate-200 dark:border-slate-800">
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Name</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Description</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Unit</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">Allocation Required</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">Approval Required</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">Paid</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-center">Status</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -242,36 +247,36 @@ export default function TimeOffTypesPage() {
                 <TableRow
                   key={type.id}
                   onClick={() => navigate(`/time-off/types/${type.id}`)}
-                  className="hover:bg-purple-50/40 border-slate-100 transition cursor-pointer"
+                  className="hover:bg-purple-50/40 dark:hover:bg-purple-950/30 border-slate-100 dark:border-slate-800 transition cursor-pointer"
                 >
                   {/* Name */}
-                  <TableCell className="font-medium text-slate-900">
+                  <TableCell className="font-medium text-slate-900 dark:text-slate-100">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-purple-100 text-purple-700 text-xs font-bold">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-bold">
                         <Calendar className="h-3.5 w-3.5" />
                       </div>
-                      <span className="hover:text-purple-600 hover:underline">{type.name}</span>
+                      <span className="hover:text-purple-600 dark:hover:text-purple-400 hover:underline">{type.name}</span>
                     </div>
                   </TableCell>
 
                   {/* Description */}
-                  <TableCell className="text-slate-600 text-sm max-w-xs truncate">
+                  <TableCell className="text-slate-600 dark:text-slate-300 text-sm max-w-xs truncate">
                     {type.description || "-"}
                   </TableCell>
 
                   {/* Unit */}
-                  <TableCell className="text-slate-700 font-medium capitalize">
+                  <TableCell className="text-slate-700 dark:text-slate-300 font-medium capitalize">
                     {type.unit || "days"}
                   </TableCell>
 
                   {/* Allocation Required */}
                   <TableCell className="text-center">
                     {type.requires_allocation ? (
-                      <Badge className="bg-purple-50 text-purple-700 border-purple-200 font-medium">
+                      <Badge className="bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 font-medium">
                         Yes
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-slate-500 border-slate-200 font-medium">
+                      <Badge variant="outline" className="text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 font-medium">
                         No
                       </Badge>
                     )}
@@ -280,11 +285,11 @@ export default function TimeOffTypesPage() {
                   {/* Approval Required */}
                   <TableCell className="text-center">
                     {type.requires_approval ? (
-                      <Badge className="bg-amber-50 text-amber-700 border-amber-200 font-medium">
+                      <Badge className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 font-medium">
                         Yes
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-slate-500 border-slate-200 font-medium">
+                      <Badge variant="outline" className="text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 font-medium">
                         No
                       </Badge>
                     )}
@@ -293,11 +298,11 @@ export default function TimeOffTypesPage() {
                   {/* Paid */}
                   <TableCell className="text-center">
                     {type.is_paid ? (
-                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium">
+                      <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 font-medium">
                         Paid
                       </Badge>
                     ) : (
-                      <Badge className="bg-rose-50 text-rose-700 border-rose-200 font-medium">
+                      <Badge className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 font-medium">
                         Unpaid
                       </Badge>
                     )}
@@ -316,7 +321,7 @@ export default function TimeOffTypesPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate(`/time-off/types/${type.id}`)}
-                        className="h-8 w-8 p-0 text-slate-600 hover:text-purple-700 hover:bg-purple-50"
+                        className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
                         title="View Details"
                       >
                         <Eye className="h-4 w-4" />
@@ -326,7 +331,7 @@ export default function TimeOffTypesPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate(`/time-off/types/${type.id}/edit`)}
-                        className="h-8 w-8 p-0 text-slate-600 hover:text-purple-700 hover:bg-purple-50"
+                        className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
                         title="Edit Type"
                       >
                         <Edit className="h-4 w-4" />

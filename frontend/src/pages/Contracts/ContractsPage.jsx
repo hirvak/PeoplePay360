@@ -111,8 +111,8 @@ export default function ContractsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Contracts</h1>
-          <p className="text-sm text-slate-500 mt-1">List view of employee contracts</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Contracts</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">List view of employee contracts</p>
         </div>
 
         <div>
@@ -127,21 +127,21 @@ export default function ContractsPage() {
       </div>
 
       {/* Search & Filter Toolbar */}
-      <Card className="p-4 bg-white shadow-2xs border-slate-200">
+      <Card className="p-4 bg-white dark:bg-[#211D20] shadow-2xs border-slate-200 dark:border-[#40383D]">
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
             <Input
               placeholder="Search contracts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-8 bg-slate-50/50"
+              className="pl-9 pr-8 bg-slate-50/50 dark:bg-slate-900/50"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-2.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
               >
                 <XCircle className="h-4 w-4" />
               </button>
@@ -165,7 +165,7 @@ export default function ContractsPage() {
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="text-xs text-slate-500 hover:text-slate-800 self-start md:self-auto"
+              className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 self-start md:self-auto"
             >
               Reset Filters
             </Button>
@@ -184,10 +184,10 @@ export default function ContractsPage() {
           </div>
         </Alert>
       ) : (
-        <Card className="overflow-hidden shadow-2xs border-slate-200 bg-white">
+        <Card className="overflow-hidden shadow-2xs border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20]">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50/80">
+              <TableRow className="bg-slate-50/80 dark:bg-slate-900/80">
                 <TableHead className="font-semibold">Contract</TableHead>
                 <TableHead className="font-semibold">Employee</TableHead>
                 <TableHead className="font-semibold">Start</TableHead>
@@ -213,15 +213,15 @@ export default function ContractsPage() {
                 // Empty State
                 <TableRow>
                   <TableCell colSpan={6} className="h-56 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-3 text-slate-400 py-8">
-                      <div className="h-12 w-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 border border-purple-100">
+                    <div className="flex flex-col items-center justify-center space-y-3 text-slate-400 dark:text-slate-500 py-8">
+                      <div className="h-12 w-12 rounded-full bg-purple-50 dark:bg-purple-950/60 flex items-center justify-center text-purple-500 dark:text-purple-300 border border-purple-100 dark:border-purple-800">
                         <FileSignature className="h-6 w-6" />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-base font-semibold text-slate-800">
+                        <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
                           {hasActiveFilters ? "No matching contracts found" : "No contract records found"}
                         </p>
-                        <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
                           {hasActiveFilters
                             ? "No contracts match your search query or selected status filter."
                             : "There are currently no employment contracts registered in the system."}
@@ -257,7 +257,7 @@ export default function ContractsPage() {
                   const wageValue = contract.wage ?? contract.salary ?? contract.basic_salary;
                   const formattedSalary =
                     wageValue !== undefined && wageValue !== null && !isNaN(Number(wageValue))
-                      ? `$${Number(wageValue).toLocaleString(undefined, {
+                      ? `₹${Number(wageValue).toLocaleString("en-IN", {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}`
@@ -267,42 +267,42 @@ export default function ContractsPage() {
                     <TableRow
                       key={contract.id}
                       onClick={() => navigate(`/contracts/${contract.id}`)}
-                      className="hover:bg-purple-50/40 transition-colors cursor-pointer"
+                      className="hover:bg-purple-50/40 dark:hover:bg-purple-950/30 transition-colors cursor-pointer"
                     >
                       {/* 1. Contract Reference Column */}
-                      <TableCell className="font-mono text-xs font-semibold text-purple-700 hover:underline">
+                      <TableCell className="font-mono text-xs font-semibold text-purple-700 dark:text-purple-400 hover:underline">
                         {refCode}
                       </TableCell>
 
                       {/* 2. Employee Column */}
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-purple-100 text-purple-700 font-bold text-xs flex items-center justify-center border border-purple-200 shrink-0">
+                          <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-xs flex items-center justify-center border border-purple-200 dark:border-purple-800 shrink-0">
                             {emp?.first_name ? `${emp.first_name[0]}${emp.last_name ? emp.last_name[0] : ""}` : "CT"}
                           </div>
                           <div>
-                            <div className="font-semibold text-slate-900 leading-tight">{empName}</div>
-                            {empCode && <div className="text-[11px] text-slate-400 font-mono mt-0.5">{empCode}</div>}
+                            <div className="font-semibold text-slate-900 dark:text-slate-100 leading-tight">{empName}</div>
+                            {empCode && <div className="text-[11px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">{empCode}</div>}
                           </div>
                         </div>
                       </TableCell>
 
                       {/* 3. Start Date Column */}
-                      <TableCell className="text-slate-600 font-medium text-xs">
+                      <TableCell className="text-slate-600 dark:text-slate-300 font-medium text-xs">
                         {contract.start_date || "—"}
                       </TableCell>
 
                       {/* 4. End Date Column */}
-                      <TableCell className="text-slate-600 font-medium text-xs">
+                      <TableCell className="text-slate-600 dark:text-slate-300 font-medium text-xs">
                         {contract.end_date ? (
                           contract.end_date
                         ) : (
-                          <span className="text-slate-400 italic text-[11px]">—</span>
+                          <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">—</span>
                         )}
                       </TableCell>
 
                       {/* 5. Wage / Month Column */}
-                      <TableCell className="text-right font-bold text-slate-900 font-mono text-xs">
+                      <TableCell className="text-right font-bold text-slate-900 dark:text-slate-100 font-mono text-xs">
                         {formattedSalary}
                       </TableCell>
 

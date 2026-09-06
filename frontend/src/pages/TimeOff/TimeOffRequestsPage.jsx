@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Plus,
@@ -10,7 +10,6 @@ import {
   Users,
   Check,
   X,
-  Loader2,
   Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,12 +33,17 @@ import {
   useApproveTimeOffRequest,
   useRejectTimeOffRequest,
 } from "@/hooks/useTimeOff";
+import { useAuth } from "@/context/AuthContext";
+import employeeService from "@/services/employeeService";
 
 export default function TimeOffRequestsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [myTeamOnly, setMyTeamOnly] = useState(false);
+  const [currentEmpProfile, setCurrentEmpProfile] = useState(null);
   const [actionError, setActionError] = useState("");
   const [actionSuccess, setActionSuccess] = useState(location.state?.message || "");
 
@@ -57,11 +61,26 @@ export default function TimeOffRequestsPage() {
   const approveMutation = useApproveTimeOffRequest();
   const rejectMutation = useRejectTimeOffRequest();
 
+  // Load logged-in employee profile for My Team filtering
+  useEffect(() => {
+    async function loadMyProfile() {
+      try {
+        const me = await employeeService.getMe();
+        setCurrentEmpProfile(me);
+      } catch {
+        setCurrentEmpProfile(null);
+      }
+    }
+    if (user) {
+      loadMyProfile();
+    }
+  }, [user]);
+
   // Create lookups
   const employeeMap = useMemo(() => {
     const map = new Map();
     employees.forEach((emp) => {
-      map.set(emp.id, `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || emp.employee_code || `Employee #${emp.id}`);
+      map.set(emp.id, emp);
     });
     return map;
   }, [employees]);
@@ -74,28 +93,43 @@ export default function TimeOffRequestsPage() {
     return map;
   }, [leaveTypes]);
 
-  // Filter requests
+  // Filter requests (Search + My Team)
   const filteredRequests = useMemo(() => {
     return requests.filter((req) => {
-      const empName = employeeMap.get(req.employee_id) || `Employee #${req.employee_id}`;
+      const emp = employeeMap.get(req.employee_id);
+      const empName = emp
+        ? `${emp.first_name || ""} ${emp.last_name || ""}`.trim()
+        : `Employee #${req.employee_id}`;
+      const empCode = emp?.employee_code || "";
       const typeName = leaveTypeMap.get(req.leave_type_id) || `Type #${req.leave_type_id}`;
       const statusStr = req.status || "";
       const reasonStr = req.reason || "";
+      const startDate = req.start_date || "";
+      const endDate = req.end_date || "";
 
+      // 1. Search Query
       const query = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !query ||
         empName.toLowerCase().includes(query) ||
+        empCode.toLowerCase().includes(query) ||
         typeName.toLowerCase().includes(query) ||
         statusStr.toLowerCase().includes(query) ||
-        reasonStr.toLowerCase().includes(query);
+        reasonStr.toLowerCase().includes(query) ||
+        startDate.includes(query) ||
+        endDate.includes(query);
 
-      // "My Team" filter placeholder (can filter team members or show all if unassigned)
-      const matchesTeam = !myTeamOnly || true;
+      // 2. My Team Filter (matches logged-in manager ID or self)
+      let matchesTeam = true;
+      if (myTeamOnly && currentEmpProfile) {
+        matchesTeam =
+          req.employee_id === currentEmpProfile.id ||
+          emp?.manager_id === currentEmpProfile.id;
+      }
 
       return matchesSearch && matchesTeam;
     });
-  }, [requests, searchQuery, myTeamOnly, employeeMap, leaveTypeMap]);
+  }, [requests, searchQuery, myTeamOnly, currentEmpProfile, employeeMap, leaveTypeMap]);
 
   const handleApprove = async (id) => {
     setActionError("");
@@ -113,9 +147,9 @@ export default function TimeOffRequestsPage() {
     setActionSuccess("");
     try {
       await rejectMutation.mutateAsync(id);
-      setActionSuccess(`Request #${id} refused successfully.`);
+      setActionSuccess(`Request #${id} rejected successfully.`);
     } catch (err) {
-      setActionError(err.response?.data?.detail || err.message || "Failed to refuse request.");
+      setActionError(err.response?.data?.detail || err.message || "Failed to reject request.");
     }
   };
 
@@ -133,14 +167,14 @@ export default function TimeOffRequestsPage() {
       return (
         <Badge className="bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-100 font-medium">
           <XCircle className="h-3 w-3 mr-1 text-rose-600" />
-          Refused
+          Rejected
         </Badge>
       );
     }
     return (
       <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 font-medium">
         <Clock className="h-3 w-3 mr-1 text-amber-600" />
-        To Approve
+        Pending
       </Badge>
     );
   };
@@ -150,11 +184,11 @@ export default function TimeOffRequestsPage() {
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
             Time Off Requests
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            List view opened from Time Off → Requests
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            List view of employee leave requests and approvals
           </p>
         </div>
 
@@ -183,23 +217,23 @@ export default function TimeOffRequestsPage() {
       )}
 
       {/* Control Bar: Search + Filters */}
-      <Card className="p-4 border-slate-200 bg-white shadow-2xs">
+      <Card className="p-4 border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] shadow-2xs">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-1 items-center gap-3">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
               <Input
                 type="text"
-                placeholder="Search requests..."
+                placeholder="Search requests by employee, type, status, dates..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-8 bg-slate-50/50"
+                className="pl-9 pr-8 bg-slate-50/50 dark:bg-slate-900/50"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2.5 top-2.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -211,13 +245,13 @@ export default function TimeOffRequestsPage() {
               type="button"
               variant={myTeamOnly ? "secondary" : "outline"}
               onClick={() => setMyTeamOnly(!myTeamOnly)}
-              className={`gap-1.5 font-medium border-slate-200 ${
+              className={`gap-1.5 font-medium border-slate-200 dark:border-slate-700 ${
                 myTeamOnly
-                  ? "bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200"
-                  : "text-slate-700 hover:bg-slate-50"
+                  ? "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-700 hover:bg-purple-200"
+                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
               }`}
             >
-              <Users className="h-4 w-4 text-purple-600" />
+              <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               <span>My Team</span>
             </Button>
           </div>
@@ -228,7 +262,7 @@ export default function TimeOffRequestsPage() {
               variant="outline"
               size="sm"
               onClick={() => refetch()}
-              className="text-slate-600 hover:text-slate-900 border-slate-200"
+              className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-[#40383D]"
               title="Refresh requests"
             >
               <RefreshCw className={`h-4 w-4 mr-1.5 ${isLoading ? "animate-spin" : ""}`} />
@@ -239,7 +273,7 @@ export default function TimeOffRequestsPage() {
       </Card>
 
       {/* Data Table / UI States */}
-      <Card className="border-slate-200 bg-white shadow-xs overflow-hidden">
+      <Card className="border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] shadow-xs overflow-hidden">
         {/* Error State */}
         {isError && (
           <div className="p-6">
@@ -274,13 +308,13 @@ export default function TimeOffRequestsPage() {
         {/* Empty State */}
         {!isLoading && !isError && filteredRequests.length === 0 && (
           <div className="p-12 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-purple-50 text-purple-600 mb-3">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 mb-3">
               <Calendar className="h-6 w-6" />
             </div>
-            <h3 className="text-base font-semibold text-slate-900">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">
               No Time Off Requests Found
             </h3>
-            <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
               {searchQuery
                 ? `No requests matching "${searchQuery}". Try clearing search filters.`
                 : "There are no time off requests submitted in the system yet."}
@@ -302,92 +336,112 @@ export default function TimeOffRequestsPage() {
         {/* Data Table */}
         {!isLoading && !isError && filteredRequests.length > 0 && (
           <Table>
-            <TableHeader className="bg-slate-50/70">
-              <TableRow className="border-slate-200">
-                <TableHead className="font-semibold text-slate-700">Employee</TableHead>
-                <TableHead className="font-semibold text-slate-700">Type</TableHead>
-                <TableHead className="font-semibold text-slate-700">Start</TableHead>
-                <TableHead className="font-semibold text-slate-700">End</TableHead>
-                <TableHead className="font-semibold text-slate-700">Duration</TableHead>
-                <TableHead className="font-semibold text-slate-700">Status</TableHead>
-                <TableHead className="font-semibold text-slate-700 text-right">Actions</TableHead>
+            <TableHeader className="bg-slate-50/70 dark:bg-slate-900/80">
+              <TableRow className="border-slate-200 dark:border-slate-800">
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Employee</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Type</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Start</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300">End</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Duration</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Status</TableHead>
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredRequests.map((req) => {
-                const empName = employeeMap.get(req.employee_id) || `Employee #${req.employee_id}`;
+                const emp = employeeMap.get(req.employee_id);
+                const empName = emp
+                  ? `${emp.first_name || ""} ${emp.last_name || ""}`.trim()
+                  : `Employee #${req.employee_id}`;
+                const empCode = emp?.employee_code || "";
                 const typeName = leaveTypeMap.get(req.leave_type_id) || `Type #${req.leave_type_id}`;
                 const statusLower = (req.status || "").toLowerCase();
-                const isPending = statusLower !== "approved" && statusLower !== "refused" && statusLower !== "rejected";
+                const isPending = statusLower === "pending";
+
+                const daysVal = req.requested_amount ? Number(req.requested_amount) : 1;
+                const daysDisplay = `${daysVal} ${daysVal === 1 ? "Day" : "Days"}`;
 
                 return (
                   <TableRow
                     key={req.id}
                     onClick={() => navigate(`/time-off/requests/${req.id}`)}
-                    className="hover:bg-purple-50/40 border-slate-100 transition cursor-pointer"
+                    className="hover:bg-purple-50/40 dark:hover:bg-purple-950/30 border-slate-100 dark:border-slate-800 transition cursor-pointer"
                   >
                     {/* Employee */}
-                    <TableCell className="font-medium text-slate-900">
+                    <TableCell className="font-medium text-slate-900 dark:text-slate-100">
                       <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-100 text-purple-700 text-xs font-bold">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-bold">
                           {empName[0]}
                         </div>
-                        <span className="hover:text-purple-600 hover:underline">{empName}</span>
+                        <div>
+                          <span className="hover:text-purple-600 dark:hover:text-purple-400 hover:underline block font-semibold">
+                            {empName}
+                          </span>
+                          {empCode && (
+                            <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                              {empCode}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
 
                     {/* Type */}
-                    <TableCell className="text-slate-700 font-medium">{typeName}</TableCell>
+                    <TableCell className="text-slate-700 dark:text-slate-300 font-medium">{typeName}</TableCell>
 
                     {/* Start */}
-                    <TableCell className="text-slate-600 whitespace-nowrap">{req.start_date}</TableCell>
+                    <TableCell className="text-slate-600 dark:text-slate-300 whitespace-nowrap">{req.start_date}</TableCell>
 
                     {/* End */}
-                    <TableCell className="text-slate-600 whitespace-nowrap">{req.end_date}</TableCell>
+                    <TableCell className="text-slate-600 dark:text-slate-300 whitespace-nowrap">{req.end_date}</TableCell>
 
                     {/* Duration */}
-                    <TableCell className="text-slate-700 font-medium">
-                      {req.requested_amount ? `${req.requested_amount} Days` : "1 Day"}
-                    </TableCell>
+                    <TableCell className="text-slate-700 dark:text-slate-300 font-medium">{daysDisplay}</TableCell>
 
                     {/* Status */}
                     <TableCell>{getStatusBadge(req.status)}</TableCell>
 
                     {/* Actions */}
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={approveMutation.isPending || rejectMutation.isPending}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleApprove(req.id);
-                          }}
-                          className="h-7 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 font-medium"
-                          title="Approve request"
-                        >
-                          <Check className="h-3.5 w-3.5 mr-1" />
-                          Approve
-                        </Button>
+                      {isPending ? (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={approveMutation.isPending || rejectMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleApprove(req.id);
+                            }}
+                            className="h-7 text-xs border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-800 dark:hover:text-emerald-200 font-medium"
+                            title="Approve request"
+                          >
+                            <Check className="h-3.5 w-3.5 mr-1" />
+                            Approve
+                          </Button>
 
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={approveMutation.isPending || rejectMutation.isPending}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRefuse(req.id);
-                          }}
-                          className="h-7 text-xs border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 font-medium"
-                          title="Refuse request"
-                        >
-                          <X className="h-3.5 w-3.5 mr-1" />
-                          Refuse
-                        </Button>
-                      </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={approveMutation.isPending || rejectMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRefuse(req.id);
+                            }}
+                            className="h-7 text-xs border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-800 dark:hover:text-rose-200 font-medium"
+                            title="Refuse request"
+                          >
+                            <X className="h-3.5 w-3.5 mr-1" />
+                            Refuse
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400 dark:text-slate-500 font-medium italic">
+                          Completed
+                        </span>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

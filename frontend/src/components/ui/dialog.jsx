@@ -14,14 +14,14 @@ export function Dialog({ open, onClose, children, className }) {
       />
       <div
         className={cn(
-          "relative z-10 w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-2xl transition-all animate-in zoom-in-95 duration-200",
+          "relative z-10 w-full max-w-lg rounded-xl border border-slate-200 dark:border-[#40383D] bg-white dark:bg-[#211D20] text-slate-800 dark:text-slate-100 p-6 shadow-2xl transition-all animate-in zoom-in-95 duration-200",
           className
         )}
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+          className="absolute right-4 top-4 rounded-md p-1.5 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition"
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
@@ -37,17 +37,17 @@ export function DialogHeader({ className, ...props }) {
 }
 
 export function DialogTitle({ className, ...props }) {
-  return <h2 className={cn("text-lg font-bold tracking-tight text-slate-900", className)} {...props} />;
+  return <h2 className={cn("text-lg font-bold tracking-tight text-slate-900 dark:text-white", className)} {...props} />;
 }
 
 export function DialogDescription({ className, ...props }) {
-  return <p className={cn("text-sm text-slate-500", className)} {...props} />;
+  return <p className={cn("text-sm text-slate-500 dark:text-slate-400", className)} {...props} />;
 }
 
 export function DialogFooter({ className, ...props }) {
   return (
     <div
-      className={cn("flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 mt-6 pt-4 border-t border-slate-100", className)}
+      className={cn("flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800", className)}
       {...props}
     />
   );

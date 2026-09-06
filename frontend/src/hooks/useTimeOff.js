@@ -1,18 +1,27 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import timeOffService from "../services/timeOffService";
 import employeeService from "../services/employeeService";
+import { useAuth } from "../context/AuthContext";
 
 export function useTimeOffRequests() {
+  const { user } = useAuth();
+  const isEmployee = user?.role === "Employee";
+
   return useQuery({
-    queryKey: ["timeOffRequests"],
-    queryFn: timeOffService.getAllRequests,
+    queryKey: ["timeOffRequests", isEmployee ? "me" : "all"],
+    queryFn: isEmployee ? timeOffService.getMyRequests : timeOffService.getAllRequests,
+    enabled: Boolean(user),
   });
 }
 
 export function useTimeOffTypes() {
+  const { user } = useAuth();
+  const isEmployee = user?.role === "Employee";
+
   return useQuery({
     queryKey: ["timeOffTypes"],
     queryFn: timeOffService.getTypes,
+    enabled: Boolean(user) && !isEmployee,
   });
 }
 
@@ -59,9 +68,13 @@ export function useDeleteTimeOffType() {
 }
 
 export function useEmployees() {
+  const { user } = useAuth();
+  const isEmployee = user?.role === "Employee";
+
   return useQuery({
     queryKey: ["employees"],
     queryFn: employeeService.getAll,
+    enabled: Boolean(user) && !isEmployee,
   });
 }
 
@@ -81,6 +94,7 @@ export function useApproveTimeOffRequest() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ["timeOffRequests"] });
       queryClient.invalidateQueries({ queryKey: ["timeOffRequest", String(id)] });
+      queryClient.invalidateQueries({ queryKey: ["leaveAllocations"] });
     },
   });
 }
@@ -93,6 +107,7 @@ export function useRejectTimeOffRequest() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ["timeOffRequests"] });
       queryClient.invalidateQueries({ queryKey: ["timeOffRequest", String(id)] });
+      queryClient.invalidateQueries({ queryKey: ["leaveAllocations"] });
     },
   });
 }
@@ -104,22 +119,50 @@ export function useCreateTimeOffRequest() {
     mutationFn: (data) => timeOffService.createRequest(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["timeOffRequests"] });
+      queryClient.invalidateQueries({ queryKey: ["leaveAllocations"] });
     },
   });
 }
 
 export function useLeaveAllocations() {
+  const { user } = useAuth();
+  const isEmployee = user?.role === "Employee";
+
   return useQuery({
-    queryKey: ["leaveAllocations"],
-    queryFn: timeOffService.getAllocations,
+    queryKey: ["leaveAllocations", isEmployee ? "me" : "all"],
+    queryFn: isEmployee ? timeOffService.getMyBalance : timeOffService.getAllocations,
+    enabled: Boolean(user),
   });
 }
 
 export function useLeaveAllocationDetails(id) {
   return useQuery({
-    queryKey: ["leaveAllocation", id],
+    queryKey: ["leaveAllocation", String(id)],
     queryFn: () => timeOffService.getAllocationById(id),
     enabled: Boolean(id),
+  });
+}
+
+export function useCreateLeaveAllocation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data) => timeOffService.createAllocation(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leaveAllocations"] });
+    },
+  });
+}
+
+export function useUpdateLeaveAllocation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }) => timeOffService.updateAllocation(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["leaveAllocations"] });
+      queryClient.invalidateQueries({ queryKey: ["leaveAllocation", String(id)] });
+    },
   });
 }
 
@@ -143,6 +186,17 @@ export function useRejectLeaveAllocation() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ["leaveAllocations"] });
       queryClient.invalidateQueries({ queryKey: ["leaveAllocation", String(id)] });
+    },
+  });
+}
+
+export function useDeleteLeaveAllocation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id) => timeOffService.deleteAllocation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leaveAllocations"] });
     },
   });
 }
